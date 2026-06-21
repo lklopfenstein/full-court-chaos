@@ -35,7 +35,8 @@ export default async function handler(request, response) {
   }
   if (photo.length > 4_000_000) return response.status(413).json({ error: 'That photo is too large. Try a smaller image.' });
 
-  const gatewayToken = process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN;
+  const requestOidcToken = request.headers['x-vercel-oidc-token'];
+  const gatewayToken = process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN || (Array.isArray(requestOidcToken) ? requestOidcToken[0] : requestOidcToken);
   const openAiToken = process.env.OPENAI_API_KEY;
   const token = gatewayToken || openAiToken;
   if (!token) return response.status(503).json({ error: 'The avatar forge is warming up. Please try again shortly.' });
