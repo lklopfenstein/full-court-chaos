@@ -13,21 +13,25 @@ const seedPlayers = [
   {
     id: 'nova', realName: 'Maya R.', alias: 'NOVA', number: '08', city: 'Brooklyn, NY', position: 'PG',
     tagline: 'Gravity is optional.', power: 'COSMIC CROSSOVER', palette: 0,
+    avatar: '/players/nova.png',
     stats: { pts: 22.4, ast: 8.2, reb: 4.1, stl: 3.4, blk: 0.4 }, wins: 7, heat: 96,
   },
   {
     id: 'glitch', realName: 'Jalen T.', alias: 'GLITCH', number: '404', city: 'Newark, NJ', position: 'SG',
     tagline: 'Now you see me. Now buckets.', power: 'LAG STEP', palette: 1,
+    avatar: '/players/glitch.png',
     stats: { pts: 25.8, ast: 4.7, reb: 5.2, stl: 1.8, blk: 0.7 }, wins: 6, heat: 93,
   },
   {
     id: 'bigfoot', realName: 'Cooper B.', alias: 'BIGFOOT', number: '77', city: 'Asheville, NC', position: 'C',
     tagline: 'No rim is safe.', power: 'EARTHQUAKE DUNK', palette: 2,
+    avatar: '/players/bigfoot.png',
     stats: { pts: 18.6, ast: 2.1, reb: 13.7, stl: 1.2, blk: 4.8 }, wins: 8, heat: 98,
   },
   {
     id: 'hot-sauce', realName: 'Ari S.', alias: 'HOT SAUCE', number: '99', city: 'Baltimore, MD', position: 'SF',
     tagline: 'Too spicy to guard.', power: 'INFERNO FADE', palette: 3,
+    avatar: '/players/hot-sauce.png',
     stats: { pts: 21.2, ast: 5.5, reb: 7.9, stl: 2.6, blk: 1.1 }, wins: 5, heat: 91,
   },
 ];
@@ -81,38 +85,40 @@ function PixelAvatar({ player, className = '' }) {
   return <canvas className={`pixel-avatar ${className}`} ref={ref} role="img" aria-label={`${player.alias} pixel portrait`} />;
 }
 
-function pixelizePhoto(file, callback) {
-  const reader = new FileReader();
-  reader.onload = () => {
-    const img = new Image();
-    img.onload = () => {
-      const out = document.createElement('canvas');
-      out.width = 192; out.height = 192;
-      const temp = document.createElement('canvas');
-      temp.width = 48; temp.height = 48;
-      const t = temp.getContext('2d');
-      const size = Math.min(img.width, img.height);
-      t.drawImage(img, (img.width - size) / 2, (img.height - size) / 2, size, size, 0, 0, 48, 48);
-      const data = t.getImageData(0, 0, 48, 48);
-      for (let i = 0; i < data.data.length; i += 4) {
-        for (let k = 0; k < 3; k++) data.data[i + k] = Math.round(data.data[i + k] / 51) * 51;
-        const x = (i / 4) % 48, y = Math.floor(i / 4 / 48);
-        const dither = ((x + y) % 2 ? -10 : 10);
-        data.data[i] = clamp(data.data[i] + dither, 0, 255);
-        data.data[i + 1] = clamp(data.data[i + 1] + dither, 0, 255);
-        data.data[i + 2] = clamp(data.data[i + 2] + dither, 0, 255);
-      }
-      t.putImageData(data, 0, 0);
-      const o = out.getContext('2d'); o.imageSmoothingEnabled = false;
-      o.fillStyle = '#ff2ca8'; o.fillRect(0, 0, 192, 192);
-      o.drawImage(temp, 8, 8, 176, 176);
-      o.strokeStyle = '#00e5ff'; o.lineWidth = 8; o.strokeRect(4, 4, 184, 184);
-      o.strokeStyle = '#07102b'; o.lineWidth = 4; o.strokeRect(12, 12, 168, 168);
-      callback(out.toDataURL('image/png'));
+function preparePhoto(file) {
+  return new Promise((resolve, reject) => {
+    if (!file.type.match(/^image\/(png|jpe?g|webp)$/)) { reject(new Error('Please choose a JPG, PNG, or WEBP photo.')); return; }
+    if (file.size > 10 * 1024 * 1024) { reject(new Error('Please choose a photo smaller than 10 MB.')); return; }
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('That photo could not be read.'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('That photo could not be opened.'));
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxSide = 896;
+        const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+        canvas.width = Math.max(1, Math.round(img.width * scale));
+        canvas.height = Math.max(1, Math.round(img.height * scale));
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', .86));
+      };
+      img.src = reader.result;
     };
-    img.src = reader.result;
-  };
-  reader.readAsDataURL(file);
+    reader.readAsDataURL(file);
+  });
+}
+
+async function forgeArcadeAvatar(photo, player) {
+  const response = await fetch('/api/pixelize', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ photo, alias: player.alias, position: player.position }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.avatar) throw new Error(data.error || 'The avatar forge missed that shot. Please try again.');
+  return { avatar: data.avatar, photo };
 }
 
 function Logo({ small = false }) {
@@ -167,9 +173,28 @@ function PlayerModal({ player, onClose }) {
 function Registration({ onClose, onCreate }) {
   const [form, setForm] = useState({ realName: '', alias: '', number: '', city: '', position: 'PG', guardian: '' });
   const [avatar, setAvatar] = useState('');
+  const [sourcePhoto, setSourcePhoto] = useState('');
+  const [forgeStatus, setForgeStatus] = useState('');
+  const [forgeError, setForgeError] = useState('');
   const [step, setStep] = useState(1);
   const generated = { ...form, alias: form.alias || 'PLAYER 1', number: form.number || '00', palette: 0, avatar };
   const update = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const handlePhoto = async (file) => {
+    setAvatar('');
+    setForgeError('');
+    setForgeStatus('SCOUTING YOUR LOOK…');
+    try {
+      const prepared = await preparePhoto(file);
+      setSourcePhoto(prepared);
+      setForgeStatus('BUILDING YOUR GAME SPRITE…');
+      const result = await forgeArcadeAvatar(prepared, form);
+      setAvatar(result.avatar);
+      setForgeStatus('PLAYER RENDER COMPLETE');
+    } catch (error) {
+      setForgeStatus('');
+      setForgeError(error.message);
+    }
+  };
   const submit = (e) => {
     e.preventDefault();
     if (step === 1) { setStep(2); return; }
@@ -200,16 +225,19 @@ function Registration({ onClose, onCreate }) {
           </div>
         </> : <>
           <h2>PIXEL MODE:<br/><em>ACTIVATED</em></h2>
-          <p className="form-intro">Upload a clear, front-facing photo. Your image stays in this browser for this prototype.</p>
+          <p className="form-intro">Upload a clear photo with the player’s face visible. The avatar forge preserves their identity, then rebuilds them as a digitized arcade-game sprite.</p>
           <div className="photo-step">
-            <label className="upload-zone">
-              {avatar ? <PixelAvatar player={generated} /> : <><span className="upload-icon">＋</span><b>DROP YOUR PLAYER PHOTO</b><small>JPG or PNG · face the camera</small></>}
-              <input required={!avatar} type="file" accept="image/png,image/jpeg" onChange={(e) => e.target.files?.[0] && pixelizePhoto(e.target.files[0], setAvatar)} />
+            <label className={`upload-zone ${forgeStatus && !avatar ? 'forging' : ''}`}>
+              {avatar ? <PixelAvatar player={generated} /> : sourcePhoto ? <img className="source-photo" src={sourcePhoto} alt="Uploaded player awaiting arcade conversion" /> : <><span className="upload-icon">＋</span><b>DROP YOUR PLAYER PHOTO</b><small>JPG, PNG, or WEBP · 10 MB max</small></>}
+              {forgeStatus && <span className="forge-status"><i />{forgeStatus}</span>}
+              <input disabled={Boolean(forgeStatus && !avatar)} required={!avatar} type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => e.target.files?.[0] && handlePhoto(e.target.files[0])} />
             </label>
             <div className="mini-card"><span>PLAYER PREVIEW</span><h3>{generated.alias.toUpperCase()}</h3><b>#{generated.number}</b><p>{generated.position} · {generated.city || 'HOMETOWN'}</p></div>
           </div>
+          {forgeError && <div className="forge-error">⚠ {forgeError}</div>}
+          <p className="privacy-note">GUARDIAN NOTE: The photo is sent securely for one-time avatar generation. Full Court Chaos does not save the original upload in this prototype.</p>
         </>}
-        <div className="form-actions">{step === 2 && <button type="button" className="back-btn" onClick={() => setStep(1)}>‹ BACK</button>}<button className="primary-btn" type="submit">{step === 1 ? 'NEXT: PIXELIZE ME' : 'LOCK IN PLAYER'} <span>››</span></button></div>
+        <div className="form-actions">{step === 2 && <button type="button" className="back-btn" onClick={() => setStep(1)}>‹ BACK</button>}<button className="primary-btn" disabled={step === 2 && (!avatar || Boolean(forgeStatus && !avatar))} type="submit">{step === 1 ? 'NEXT: PIXELIZE ME' : 'LOCK IN PLAYER'} <span>››</span></button></div>
       </form>
     </div>
   );
@@ -234,7 +262,14 @@ function Scorekeeper({ players, setPlayers }) {
 
 function App() {
   const [players, setPlayersState] = useState(() => {
-    try { const saved = localStorage.getItem('fcc-players'); return saved ? JSON.parse(saved) : seedPlayers; } catch { return seedPlayers; }
+    try {
+      const saved = localStorage.getItem('fcc-players');
+      if (!saved) return seedPlayers;
+      const stored = JSON.parse(saved);
+      const custom = stored.filter(player => !seedPlayers.some(seed => seed.id === player.id));
+      const demos = seedPlayers.map(seed => ({ ...stored.find(player => player.id === seed.id), ...seed }));
+      return [...demos, ...custom];
+    } catch { return seedPlayers; }
   });
   const [profile, setProfile] = useState(null);
   const [register, setRegister] = useState(false);

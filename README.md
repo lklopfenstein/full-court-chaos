@@ -20,12 +20,12 @@ npm run build
 - Responsive league landing page and tour presentation
 - Arcade player cards and full player-select profile views
 - Two-step guardian-led player registration
-- In-browser photo cropping, color quantization, dithering, and pixel framing
+- AI photo-to-sprite conversion that preserves player identity while enforcing the league's canonical digitized 32-bit gameplay style
 - Scorekeeper console with live leaderboard updates
 - Local browser persistence for created players and stat changes
 
 ## Production handoff
 
-This version deliberately stores uploads and records only in the current browser. A live youth platform should add authenticated guardian accounts, an encrypted hosted database, private object storage, moderator approval before profiles become public, role-gated scorekeeping, and a written youth privacy/retention policy. The UI is already separated cleanly enough to replace local storage with those APIs.
+The original photo is resized in the browser, sent through a protected Vercel server function for one-time avatar generation, and is not written to site storage. Generated profiles and records are still stored only in the current browser. A full youth platform should add authenticated guardian accounts, an encrypted hosted database, private object storage, moderator approval before profiles become public, role-gated scorekeeping, durable rate limiting, and a written youth privacy/retention policy. The UI is already separated cleanly enough to replace local storage with those APIs.
 
 The name, copy, pixel portraits, and generated arena art are original concept work. The experience draws on the broad language of 1990s arcade sports presentation without reusing third-party logos, game assets, or characters.
