@@ -1,3 +1,5 @@
+import { createGateway, generateImage } from 'ai';
+
 const WINDOW_MS = 60 * 60 * 1000;
 const MAX_GENERATIONS_PER_WINDOW = 4;
 const rateLimits = globalThis.__fullCourtChaosRateLimits || new Map();
@@ -37,18 +39,13 @@ export default async function handler(request, response) {
 
   const requestOidcToken = request.headers['x-vercel-oidc-token'];
   const gatewayToken = process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN || (Array.isArray(requestOidcToken) ? requestOidcToken[0] : requestOidcToken);
-  const openAiToken = process.env.OPENAI_API_KEY;
-  const token = gatewayToken || openAiToken;
-  if (!token) return response.status(503).json({ error: 'The avatar forge is warming up. Please try again shortly.' });
+  if (!gatewayToken) return response.status(503).json({ error: 'The avatar forge is warming up. Please try again shortly.' });
 
   const protocol = request.headers['x-forwarded-proto'] || 'https';
   const host = request.headers['x-forwarded-host'] || request.headers.host;
   const styleReference = `${protocol}://${host}/players/nova.png`;
   const alias = safeLabel(body.alias, 'ROOKIE');
   const position = safeLabel(body.position, 'GUARD');
-  const usingGateway = Boolean(gatewayToken);
-  const baseUrl = usingGateway ? 'https://ai-gateway.vercel.sh/v1' : 'https://api.openai.com/v1';
-  const model = usingGateway ? 'openai/gpt-image-1.5' : 'gpt-image-1.5';
 
   const prompt = `
 Image 1 is the player's identity reference photo. Image 2 is the exact visual-style reference for the output.
@@ -61,29 +58,28 @@ Output one centered figure only on a transparent background. Keep all hair, limb
 `.trim();
 
   try {
-    const upstream = await fetch(`${baseUrl}/images/edits`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model,
-        images: [{ image_url: photo }, { image_url: styleReference }],
-        prompt,
-        input_fidelity: 'high',
-        background: 'transparent',
-        output_format: 'webp',
-        output_compression: 82,
-        size: '1024x1536',
-        quality: 'medium',
-        n: 1,
-      }),
+    const photoBytes = Buffer.from(photo.split(',')[1], 'base64');
+    const styleResponse = await fetch(styleReference);
+    if (!styleResponse.ok) throw new Error('Style reference unavailable');
+    const styleBytes = new Uint8Array(await styleResponse.arrayBuffer());
+    const gateway = createGateway({ apiKey: gatewayToken });
+    const result = await generateImage({
+      model: gateway.imageModel('openai/gpt-image-1.5'),
+      prompt: { text: prompt, images: [photoBytes, styleBytes] },
+      size: '1024x1536',
+      n: 1,
+      providerOptions: {
+        openai: {
+          inputFidelity: 'high',
+          background: 'transparent',
+          outputFormat: 'webp',
+          outputCompression: 82,
+          quality: 'medium',
+        },
+      },
     });
-    const result = await upstream.json();
-    const encoded = result?.data?.[0]?.b64_json;
-    if (!upstream.ok || !encoded) {
-      console.error('Avatar generation failed', upstream.status, result?.error?.message || 'No image returned');
-      return response.status(502).json({ error: 'The avatar forge missed that shot. Please try the photo again.' });
-    }
-    return response.status(200).json({ avatar: `data:image/webp;base64,${encoded}` });
+    if (!result.image?.base64) throw new Error('No image returned');
+    return response.status(200).json({ avatar: `data:${result.image.mediaType || 'image/webp'};base64,${result.image.base64}` });
   } catch (error) {
     console.error('Avatar generation request failed', error);
     return response.status(502).json({ error: 'The avatar forge could not connect. Please try again.' });
