@@ -437,11 +437,14 @@ async function renderPoseAvatar(identity, poseIndex, onStage = () => {}) {
   recolorPose(cell, identity.skin);
   context.imageSmoothingEnabled = false;
   const [slotX, slotY, slotWidth, slotHeight] = pose.head;
-  const faceAspect = 40 / 52;
-  const headWidth = Math.min(slotWidth, slotHeight * faceAspect) * .78;
+  // The sprite artwork is deliberately widened when it enters the pose atlas.
+  // A literal 20:26 canvas ratio reads too tall and narrow beside the atlas's
+  // broad shoulders, especially on mobile where the whole player is enlarged.
+  const faceAspect = .84;
+  const headWidth = Math.min(slotWidth, slotHeight * faceAspect) * .86;
   const headHeight = headWidth / faceAspect;
   const headX = slotX + (slotWidth - headWidth) / 2;
-  const headY = slotY + (slotHeight - headHeight) / 2;
+  const headY = slotY + (slotHeight - headHeight) * .76;
   context.save();
   context.beginPath();
   context.ellipse(slotX + slotWidth / 2, slotY + slotHeight / 2, slotWidth * .54, slotHeight * .53, 0, 0, Math.PI * 2);
@@ -450,11 +453,14 @@ async function renderPoseAvatar(identity, poseIndex, onStage = () => {}) {
   context.restore();
   context.fillStyle = `rgb(${identity.skin.join(',')})`;
   context.beginPath();
-  context.moveTo(headX + headWidth * .35, headY + headHeight * .66);
-  context.lineTo(headX + headWidth * .65, headY + headHeight * .66);
-  context.lineTo(slotX + slotWidth * .67, slotY + slotHeight + 3);
-  context.lineTo(slotX + slotWidth * .33, slotY + slotHeight + 3);
-  context.closePath(); context.fill();
+  context.ellipse(
+    slotX + slotWidth / 2,
+    slotY + slotHeight * .72,
+    slotWidth * .26,
+    slotHeight * .25,
+    0, 0, Math.PI * 2,
+  );
+  context.fill();
   context.drawImage(face, headX, headY, headWidth, headHeight);
   const bounds = alphaBounds(cell);
   const output = document.createElement('canvas');
