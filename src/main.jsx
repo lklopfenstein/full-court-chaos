@@ -111,21 +111,22 @@ function preparePhoto(file) {
 }
 
 const POSES = [
-  { id: 'ready', name: 'READY STANCE', src: [90, 20, 235, 292], head: [90, 5, 47, 59], ball: [38, 150, 23] },
-  { id: 'dribble-left', name: 'LEFT DRIBBLE', src: [455, 35, 260, 280], head: [126, 9, 44, 74], ball: [43, 147, 25] },
-  { id: 'dribble-right', name: 'RIGHT DRIBBLE', src: [830, 40, 255, 280], head: [104, 9, 44, 73], ball: [190, 134, 24] },
-  { id: 'crossover', name: 'LOW CROSSOVER', src: [1150, 55, 310, 275], head: [155, 12, 45, 73], ball: [190, 200, 25] },
-  { id: 'jump-shot', name: 'JUMP SHOT', src: [115, 316, 190, 330], head: [70, 52, 55, 70], ball: [85, 31, 21] },
-  { id: 'one-hand-dunk', name: 'ONE-HAND DUNK', src: [445, 305, 285, 355], head: [93, 59, 54, 70], ball: [64, 35, 21] },
-  { id: 'two-hand-dunk', name: 'TWO-HAND DUNK', src: [830, 310, 220, 340], head: [72, 69, 52, 71], ball: [94, 43, 23] },
-  { id: 'layup', name: 'RUNNING LAYUP', src: [1155, 310, 310, 355], head: [105, 58, 56, 69], ball: [223, 42, 22] },
-  { id: 'defense', name: 'LOCKDOWN D', src: [70, 680, 260, 300], head: [108, 31, 56, 76], ball: [220, 170, 22] },
-  { id: 'crowd', name: 'CROWD ROAR', src: [440, 635, 255, 350], head: [78, 44, 56, 68], ball: [205, 38, 21] },
-  { id: 'point', name: 'CALL YOUR SHOT', src: [805, 640, 245, 345], head: [64, 31, 57, 67], ball: [35, 195, 22] },
-  { id: 'flex', name: 'FLEX MODE', src: [1175, 640, 225, 345], head: [80, 30, 57, 66], ball: [190, 125, 22] },
+  { id: 'ready', name: 'READY STANCE', src: [90, 20, 235, 292], head: [90, 5, 47, 59] },
+  { id: 'dribble-left', name: 'LEFT DRIBBLE', src: [455, 35, 260, 280], head: [126, 9, 44, 74] },
+  { id: 'dribble-right', name: 'RIGHT DRIBBLE', src: [830, 40, 255, 280], head: [104, 9, 44, 73] },
+  { id: 'crossover', name: 'LOW CROSSOVER', src: [1150, 55, 310, 275], head: [155, 12, 45, 73] },
+  { id: 'jump-shot', name: 'JUMP SHOT', src: [115, 316, 190, 330], head: [70, 52, 55, 70] },
+  { id: 'one-hand-dunk', name: 'ONE-HAND DUNK', src: [445, 305, 285, 355], head: [93, 59, 54, 70] },
+  { id: 'two-hand-dunk', name: 'TWO-HAND DUNK', src: [830, 310, 220, 340], head: [72, 69, 52, 71] },
+  { id: 'layup', name: 'RUNNING LAYUP', src: [1155, 310, 310, 355], head: [105, 58, 56, 69] },
+  { id: 'defense', name: 'LOCKDOWN D', src: [70, 680, 260, 300], head: [108, 31, 56, 76] },
+  { id: 'crowd', name: 'CROWD ROAR', src: [440, 635, 255, 350], head: [78, 44, 56, 68] },
+  { id: 'point', name: 'CALL YOUR SHOT', src: [805, 640, 245, 345], head: [64, 31, 57, 67] },
+  { id: 'flex', name: 'FLEX MODE', src: [1175, 640, 225, 345], head: [80, 30, 57, 66] },
 ];
 
 let bodyPixModelPromise;
+let faceLandmarkModelPromise;
 let poseAtlasPromise;
 
 function getBodyPixModel() {
@@ -141,6 +142,21 @@ function getBodyPixModel() {
     });
   }
   return bodyPixModelPromise;
+}
+
+function getFaceLandmarkModel() {
+  if (!faceLandmarkModelPromise) {
+    faceLandmarkModelPromise = Promise.all([
+      import('@tensorflow/tfjs'),
+      import('@tensorflow-models/face-landmarks-detection'),
+    ]).then(async ([tf, landmarks]) => {
+      await tf.ready();
+      return landmarks.createDetector(landmarks.SupportedModels.MediaPipeFaceMesh, {
+        runtime: 'tfjs', refineLandmarks: true, maxFaces: 1,
+      });
+    });
+  }
+  return faceLandmarkModelPromise;
 }
 
 function loadImage(source) {
@@ -210,60 +226,123 @@ function sampleHairTone(sourcePixels, labels, width, height, face) {
   return [median(hair.map(sample => sample.color[0])), median(hair.map(sample => sample.color[1])), median(hair.map(sample => sample.color[2]))];
 }
 
-function makeFaceSprite(image, labels, width, height, face) {
-  const cropW = face.width * 1.34;
-  const cropH = face.height * 1.42;
-  const centerX = (face.minX + face.maxX) / 2;
-  const cropX = clamp(centerX - cropW / 2, 0, Math.max(0, width - cropW));
-  const cropY = clamp(face.minY - face.height * .3, 0, Math.max(0, height - cropH));
-  const head = document.createElement('canvas');
-  head.width = 36; head.height = 45;
-  const context = head.getContext('2d', { willReadFrequently: true });
-  context.imageSmoothingEnabled = true;
-  context.drawImage(image, cropX, cropY, cropW, cropH, 0, 0, head.width, head.height);
-  const pixels = context.getImageData(0, 0, head.width, head.height);
-  const originalAlpha = new Uint8ClampedArray(head.width * head.height);
-  const bayer = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]];
-  for (let y = 0; y < head.height; y++) for (let x = 0; x < head.width; x++) {
-    const index = (y * head.width + x) * 4;
-    const sourceX = clamp(Math.round(cropX + (x + .5) / head.width * cropW), 0, width - 1);
-    const sourceY = clamp(Math.round(cropY + (y + .5) / head.height * cropH), 0, height - 1);
-    const dx = (x + .5 - head.width / 2) / (head.width * .49);
-    const dy = (y + .5 - head.height * .51) / (head.height * .5);
-    if (labels[sourceY * width + sourceX] < 0 || dx * dx + dy * dy > 1) {
-      pixels.data[index + 3] = 0;
-      continue;
-    }
-    const dither = (bayer[y % 4][x % 4] - 7.5) * 1.45;
-    for (let channel = 0; channel < 3; channel++) {
-      pixels.data[index + channel] = clamp(Math.round((pixels.data[index + channel] + dither) / 24) * 24, 0, 255);
-    }
-    pixels.data[index + 3] = 255;
-    originalAlpha[y * head.width + x] = 255;
+function colorCss(color) {
+  return `rgb(${color.map(value => Math.round(clamp(value, 0, 255))).join(',')})`;
+}
+
+function shadeColor(color, factor) {
+  return color.map(value => value * factor);
+}
+
+function samplePatch(sourcePixels, width, height, point, radius = 3, darkest = false) {
+  const colors = [];
+  const centerX = Math.round(point.x), centerY = Math.round(point.y);
+  for (let y = centerY - radius; y <= centerY + radius; y++) for (let x = centerX - radius; x <= centerX + radius; x++) {
+    if (x < 0 || y < 0 || x >= width || y >= height) continue;
+    const index = (y * width + x) * 4;
+    const color = [sourcePixels[index], sourcePixels[index + 1], sourcePixels[index + 2]];
+    colors.push({ color, light: color[0] * .3 + color[1] * .59 + color[2] * .11 });
   }
-  for (let y = 1; y < head.height - 1; y++) for (let x = 1; x < head.width - 1; x++) {
-    const index = (y * head.width + x) * 4;
-    if (pixels.data[index + 3]) continue;
-    let neighbor = false;
-    for (let oy = -1; oy <= 1 && !neighbor; oy++) for (let ox = -1; ox <= 1; ox++) {
-      if (originalAlpha[(y + oy) * head.width + x + ox]) { neighbor = true; break; }
-    }
-    if (neighbor) {
-      pixels.data[index] = 5; pixels.data[index + 1] = 8; pixels.data[index + 2] = 27; pixels.data[index + 3] = 255;
-    }
+  if (!colors.length) return [45, 34, 31];
+  if (darkest) colors.sort((a, b) => a.light - b.light);
+  const selected = darkest ? colors.slice(0, Math.max(4, Math.ceil(colors.length * .3))) : colors;
+  return [0, 1, 2].map(channel => median(selected.map(sample => sample.color[channel])));
+}
+
+function midpoint(first, second) {
+  return { x: (first.x + second.x) / 2, y: (first.y + second.y) / 2 };
+}
+
+function fillPolygon(context, color, points) {
+  context.fillStyle = color;
+  context.beginPath();
+  points.forEach(([x, y], index) => index ? context.lineTo(x, y) : context.moveTo(x, y));
+  context.closePath(); context.fill();
+}
+
+function makePixelFaceSprite(landmarkFace, image, sourcePixels, width, height, skin, hair, bodyFace) {
+  const points = landmarkFace.keypoints;
+  const box = landmarkFace.box;
+  const safePoint = (index, fallback) => points[index] || fallback;
+  const leftEye = midpoint(safePoint(33, { x: box.xMin + box.width * .35, y: box.yMin + box.height * .4 }), safePoint(133, { x: box.xMin + box.width * .43, y: box.yMin + box.height * .4 }));
+  const rightEye = midpoint(safePoint(362, { x: box.xMin + box.width * .57, y: box.yMin + box.height * .4 }), safePoint(263, { x: box.xMin + box.width * .65, y: box.yMin + box.height * .4 }));
+  const orderedEyes = [leftEye, rightEye].sort((a, b) => a.x - b.x);
+  const nose = safePoint(1, { x: box.xMin + box.width * .5, y: box.yMin + box.height * .6 });
+  const mouthLeft = safePoint(61, { x: box.xMin + box.width * .39, y: box.yMin + box.height * .75 });
+  const mouthRight = safePoint(291, { x: box.xMin + box.width * .61, y: box.yMin + box.height * .75 });
+  const mouthCenter = midpoint(safePoint(13, mouthLeft), safePoint(14, mouthRight));
+  const forehead = safePoint(10, { x: box.xMin + box.width * .5, y: box.yMin + box.height * .14 });
+  const mapX = point => clamp(Math.round(5 + ((point.x - box.xMin) / box.width) * 30), 6, 34);
+  const mapY = point => clamp(Math.round(7 + ((point.y - box.yMin) / box.height) * 38), 8, 45);
+  const eyeY = clamp(Math.round((mapY(orderedEyes[0]) + mapY(orderedEyes[1])) / 2), 19, 27);
+  const eyeX = [clamp(mapX(orderedEyes[0]), 11, 17), clamp(mapX(orderedEyes[1]), 23, 29)];
+  const noseX = clamp(mapX(nose), 18, 22), noseY = clamp(mapY(nose), eyeY + 5, 35);
+  const mouthY = clamp(mapY(mouthCenter), noseY + 5, 42);
+  const mouthWidth = clamp(Math.round(Math.abs(mapX(mouthRight) - mapX(mouthLeft))), 7, 13);
+  const hairDepth = clamp(Math.round(8 + ((forehead.y - bodyFace.minY) / Math.max(1, bodyFace.height)) * 9), 8, 15);
+  const eyeTone = samplePatch(sourcePixels, width, height, midpoint(orderedEyes[0], orderedEyes[1]), 5, true);
+  const lipTone = samplePatch(sourcePixels, width, height, mouthCenter, 3, true);
+  const canvas = document.createElement('canvas');
+  canvas.width = 40; canvas.height = 52;
+  const context = canvas.getContext('2d');
+  context.imageSmoothingEnabled = false;
+  const outline = '#07091d';
+  const shadow = colorCss(shadeColor(skin, .66));
+  const highlight = colorCss(shadeColor(skin, 1.14));
+  fillPolygon(context, outline, [[11,1],[29,1],[35,6],[38,17],[37,34],[31,45],[25,51],[15,51],[9,45],[3,34],[2,17],[5,7]]);
+  fillPolygon(context, colorCss(skin), [[11,4],[29,4],[33,8],[35,18],[34,33],[29,43],[24,48],[16,48],[11,43],[6,33],[5,18],[8,8]]);
+  context.fillStyle = outline; context.fillRect(0, 20, 5, 12); context.fillRect(35, 20, 5, 12);
+  context.fillStyle = colorCss(skin); context.fillRect(2, 21, 4, 9); context.fillRect(34, 21, 4, 9);
+  fillPolygon(context, shadow, [[29,6],[33,9],[35,19],[34,33],[29,43],[24,48],[24,8]]);
+  const texture = document.createElement('canvas');
+  texture.width = 16; texture.height = 20;
+  const textureContext = texture.getContext('2d', { willReadFrequently: true });
+  textureContext.imageSmoothingEnabled = true;
+  textureContext.drawImage(image, box.xMin, box.yMin, box.width, box.height, 0, 0, texture.width, texture.height);
+  const texturePixels = textureContext.getImageData(0, 0, texture.width, texture.height);
+  for (let index = 0; index < texturePixels.data.length; index += 4) {
+    for (let channel = 0; channel < 3; channel++) texturePixels.data[index + channel] = Math.round(texturePixels.data[index + channel] / 40) * 40;
   }
-  context.putImageData(pixels, 0, 0);
-  return head.toDataURL('image/png');
+  textureContext.putImageData(texturePixels, 0, 0);
+  context.save();
+  context.beginPath(); context.ellipse(20, 26, 13, 18, 0, 0, Math.PI * 2); context.clip();
+  context.globalAlpha = .48; context.globalCompositeOperation = 'source-over';
+  context.drawImage(texture, 8, 8, 24, 36);
+  context.restore();
+  fillPolygon(context, colorCss(hair), [[8,5],[12,1],[29,1],[35,7],[34,hairDepth],[29,hairDepth - 2],[25,hairDepth + 1],[20,hairDepth - 1],[15,hairDepth + 1],[10,hairDepth - 1],[6,hairDepth + 2],[5,10]]);
+  context.fillStyle = outline;
+  context.fillRect(eyeX[0] - 4, eyeY - 5, 8, 2); context.fillRect(eyeX[1] - 4, eyeY - 5, 8, 2);
+  context.fillStyle = '#efe3d1';
+  context.fillRect(eyeX[0] - 3, eyeY - 1, 6, 4); context.fillRect(eyeX[1] - 3, eyeY - 1, 6, 4);
+  context.fillStyle = colorCss(eyeTone);
+  context.fillRect(eyeX[0] - 1, eyeY - 1, 2, 4); context.fillRect(eyeX[1] - 1, eyeY - 1, 2, 4);
+  context.fillStyle = outline;
+  context.fillRect(eyeX[0], eyeY, 1, 2); context.fillRect(eyeX[1], eyeY, 1, 2);
+  context.fillStyle = shadow;
+  context.fillRect(noseX, eyeY + 3, 2, Math.max(3, noseY - eyeY - 2)); context.fillRect(noseX - 2, noseY, 5, 2);
+  context.fillStyle = highlight; context.fillRect(noseX - 1, eyeY + 4, 1, Math.max(2, noseY - eyeY - 4));
+  context.fillStyle = colorCss(shadeColor(lipTone, .86));
+  context.fillRect(Math.round(20 - mouthWidth / 2), mouthY, mouthWidth, 2);
+  context.fillStyle = colorCss(shadeColor(lipTone, 1.12));
+  context.fillRect(17, mouthY + 2, 6, 1);
+  context.fillStyle = highlight;
+  context.fillRect(9, eyeY + 8, 3, 2); context.fillRect(27, eyeY + 7, 2, 2);
+  context.fillStyle = shadow;
+  context.fillRect(16, 44, 8, 2);
+  return canvas.toDataURL('image/png');
 }
 
 async function extractPlayerIdentity(photo, onStage = () => {}) {
-  onStage('LOADING THE FREE FACE ENGINE…');
-  const [net, image] = await Promise.all([getBodyPixModel(), loadImage(photo)]);
-  onStage('READING FACE + SKIN TONE…');
-  const parts = await net.segmentPersonParts(image, {
-    flipHorizontal: false, internalResolution: 'high', segmentationThreshold: 0.62,
-    maxDetections: 1, scoreThreshold: 0.25, nmsRadius: 20,
-  });
+  onStage('LOADING THE FREE FACE ENGINES…');
+  const [net, landmarkDetector, image] = await Promise.all([getBodyPixModel(), getFaceLandmarkModel(), loadImage(photo)]);
+  onStage('MAPPING YOUR ARCADE FACE…');
+  const [parts, landmarkFaces] = await Promise.all([
+    net.segmentPersonParts(image, {
+      flipHorizontal: false, internalResolution: 'high', segmentationThreshold: 0.62,
+      maxDetections: 1, scoreThreshold: 0.25, nmsRadius: 20,
+    }),
+    landmarkDetector.estimateFaces(image, { flipHorizontal: false, staticImageMode: true }),
+  ]);
   const { width, height, data: labels } = parts;
   const source = document.createElement('canvas');
   source.width = width; source.height = height;
@@ -273,11 +352,12 @@ async function extractPlayerIdentity(photo, onStage = () => {}) {
   const person = detectBounds(labels, width, height, label => label >= 0);
   if (person.pixels < width * height * .018) throw new Error('We could not find one clear face. Try a brighter, front-facing photo.');
   if (face.pixels < Math.max(24, width * height * .00012)) throw new Error('Move closer and use a clear photo where the player’s face is visible.');
+  if (!landmarkFaces.length) throw new Error('We could not map the player’s facial features. Try a straight-on photo with both eyes visible.');
   const sourcePixels = sourceContext.getImageData(0, 0, width, height).data;
   const skin = sampleSkinTone(sourcePixels, labels, width, face);
   const hair = sampleHairTone(sourcePixels, labels, width, height, face);
   return {
-    face: makeFaceSprite(image, labels, width, height, face),
+    face: makePixelFaceSprite(landmarkFaces[0], image, sourcePixels, width, height, skin, hair, face),
     skin,
     hair,
   };
@@ -340,38 +420,6 @@ function alphaBounds(canvas) {
   return { x: Math.max(0, minX - 7), y: Math.max(0, minY - 7), width: Math.min(canvas.width - minX + 7, maxX - minX + 15), height: Math.min(canvas.height - minY + 7, maxY - minY + 15) };
 }
 
-function drawPoweredBall(context, x, y, radius) {
-  const sprite = document.createElement('canvas');
-  sprite.width = 32; sprite.height = 28;
-  const fire = sprite.getContext('2d');
-  fire.imageSmoothingEnabled = false;
-  fire.fillStyle = '#8e1024';
-  fire.beginPath();
-  fire.moveTo(4, 20); fire.lineTo(2, 12); fire.lineTo(8, 9); fire.lineTo(10, 1); fire.lineTo(15, 8);
-  fire.lineTo(20, 0); fire.lineTo(22, 9); fire.lineTo(29, 5); fire.lineTo(26, 17); fire.lineTo(30, 22);
-  fire.closePath(); fire.fill();
-  fire.fillStyle = '#ff4b16';
-  fire.beginPath();
-  fire.moveTo(7, 20); fire.lineTo(8, 13); fire.lineTo(13, 9); fire.lineTo(15, 3); fire.lineTo(19, 10);
-  fire.lineTo(24, 5); fire.lineTo(23, 15); fire.lineTo(27, 21); fire.closePath(); fire.fill();
-  fire.fillStyle = '#ffd335';
-  fire.beginPath(); fire.moveTo(11, 19); fire.lineTo(13, 12); fire.lineTo(17, 7); fire.lineTo(19, 14); fire.lineTo(23, 19); fire.closePath(); fire.fill();
-  fire.fillStyle = '#08091d';
-  fire.beginPath(); fire.arc(16, 17, 12, 0, Math.PI * 2); fire.fill();
-  fire.fillStyle = '#ed6419';
-  fire.beginPath(); fire.arc(16, 17, 10, 0, Math.PI * 2); fire.fill();
-  fire.strokeStyle = '#34110c'; fire.lineWidth = 2;
-  fire.beginPath(); fire.arc(16, 17, 9, 0, Math.PI * 2); fire.stroke();
-  fire.beginPath(); fire.moveTo(6, 17); fire.lineTo(26, 17); fire.stroke();
-  fire.beginPath(); fire.arc(11, 17, 8, -Math.PI / 2, Math.PI / 2); fire.stroke();
-  fire.beginPath(); fire.arc(21, 17, 8, Math.PI / 2, Math.PI * 1.5); fire.stroke();
-  fire.fillStyle = '#ffdf55'; fire.fillRect(10, 11, 4, 3);
-  const scale = radius / 10;
-  const safeY = Math.max(y, radius * 1.7);
-  context.imageSmoothingEnabled = false;
-  context.drawImage(sprite, Math.round(x - 16 * scale), Math.round(safeY - 17 * scale), Math.round(32 * scale), Math.round(28 * scale));
-}
-
 async function renderPoseAvatar(identity, poseIndex, onStage = () => {}) {
   const pose = POSES[poseIndex % POSES.length];
   onStage(`BUILDING ${pose.name}…`);
@@ -383,15 +431,17 @@ async function renderPoseAvatar(identity, poseIndex, onStage = () => {}) {
   removeSmallAlphaIslands(cell);
   recolorPose(cell, identity.skin);
   context.imageSmoothingEnabled = false;
-  const headX = pose.head[0] - pose.head[2] * .1;
-  const headY = pose.head[1] - pose.head[3] * .08;
-  const headWidth = pose.head[2] * 1.2;
-  const headHeight = pose.head[3] * 1.14;
+  const [slotX, slotY, slotWidth, slotHeight] = pose.head;
+  const faceAspect = 40 / 52;
+  const headWidth = Math.min(slotWidth, slotHeight * faceAspect) * .9;
+  const headHeight = headWidth / faceAspect;
+  const headX = slotX + (slotWidth - headWidth) / 2;
+  const headY = slotY + (slotHeight - headHeight) / 2;
   context.save();
   context.beginPath();
-  context.ellipse(pose.head[0] + pose.head[2] / 2, pose.head[1] + pose.head[3] / 2, pose.head[2] * .54, pose.head[3] * .53, 0, 0, Math.PI * 2);
+  context.ellipse(slotX + slotWidth / 2, slotY + slotHeight / 2, slotWidth * .54, slotHeight * .53, 0, 0, Math.PI * 2);
   context.clip();
-  context.clearRect(pose.head[0] - 4, pose.head[1] - 4, pose.head[2] + 8, pose.head[3] + 8);
+  context.clearRect(slotX - 4, slotY - 4, slotWidth + 8, slotHeight + 8);
   context.restore();
   context.fillStyle = `rgb(${identity.skin.join(',')})`;
   context.beginPath();
@@ -400,14 +450,7 @@ async function renderPoseAvatar(identity, poseIndex, onStage = () => {}) {
   context.lineTo(headX + headWidth * .68, headY + headHeight * .96);
   context.lineTo(headX + headWidth * .32, headY + headHeight * .96);
   context.closePath(); context.fill();
-  context.save();
-  context.fillStyle = `rgb(${identity.hair.join(',')})`;
-  context.beginPath();
-  context.ellipse(headX + headWidth / 2, headY + headHeight * .23, headWidth * .43, headHeight * .25, 0, Math.PI, Math.PI * 2);
-  context.fill();
-  context.restore();
   context.drawImage(face, headX, headY, headWidth, headHeight);
-  drawPoweredBall(context, ...pose.ball);
   const bounds = alphaBounds(cell);
   const output = document.createElement('canvas');
   output.width = 576; output.height = 720;
