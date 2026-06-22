@@ -22,7 +22,7 @@ npm run build
 - Two-step guardian-led player registration
 - Free on-device headshot-to-sprite conversion that preserves facial features, samples skin tone, pixelizes the face, and composites it onto a selectable library of 12 full-body arcade basketball poses
 - Scorekeeper console with live leaderboard updates
-- Local browser persistence for created players and stat changes
+- Local browser persistence for created players and stat changes, including confirmation-protected profile deletion
 
 ## Production handoff
 

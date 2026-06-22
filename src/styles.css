@@ -230,6 +230,14 @@ footer small { grid-column: 1 / -1; border-top: 1px solid #33354e; padding-top: 
 .profile-stats div + div { border-left: 2px solid var(--ink); }
 .profile-stats b { display: block; font: 900 22px var(--display); }
 .profile-stats span { font: 5px var(--pixel); color: #645b66; }
+.profile-actions { margin-top: 17px; display: flex; justify-content: flex-end; }
+.delete-profile { border: 2px solid #a52f3b; background: transparent; color: #8b2630; padding: 9px 12px; font: 5px var(--pixel); }
+.delete-profile:hover { background: #a52f3b; color: white; }
+.delete-confirm { width: 100%; border: 3px solid var(--ink); background: #ffcfcb; padding: 12px; box-shadow: 4px 4px 0 #a52f3b; }
+.delete-confirm span { display: block; font: 700 15px/1.2 var(--display); color: #54151c; }
+.delete-confirm div { display: flex; justify-content: flex-end; gap: 9px; margin-top: 10px; }
+.delete-confirm button { border: 2px solid var(--ink); background: var(--cream); padding: 8px 10px; font: 5px var(--pixel); }
+.delete-confirm .confirm-delete { background: #a52f3b; color: white; }
 
 .registration { position: relative; width: min(850px,100%); background: var(--cream); border: 5px solid var(--ink); padding: 0 50px 40px; box-shadow: 13px 13px 0 var(--pink),18px 18px 0 var(--cyan); }
 .form-head { height: 50px; margin: 0 -50px; padding: 16px 70px 16px 20px; display: flex; justify-content: space-between; background: var(--ink); color: white; font: 7px var(--pixel); }

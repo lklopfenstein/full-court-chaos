@@ -375,7 +375,9 @@ function PlayerCard({ player, onClick, rank }) {
   );
 }
 
-function PlayerModal({ player, onClose }) {
+function PlayerModal({ player, onClose, onDelete }) {
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  useEffect(() => setConfirmingDelete(false), [player?.id]);
   if (!player) return null;
   const stats = [
     ['SCORING', Math.min(100, player.stats.pts * 3.7)], ['PLAYMAKING', Math.min(100, player.stats.ast * 10)],
@@ -396,6 +398,10 @@ function PlayerModal({ player, onClose }) {
             <div className="power-up"><span>SIGNATURE POWER</span><strong>{player.power}</strong></div>
             <div className="meters">{stats.map(([label, value]) => <div className="meter" key={label}><span>{label}</span><i><b style={{ width: `${value}%` }} /></i><em>{Math.round(value)}</em></div>)}</div>
             <div className="profile-stats">{Object.entries(player.stats).map(([key, value]) => <div key={key}><b>{value}</b><span>{key.toUpperCase()}</span></div>)}</div>
+            <div className="profile-actions">
+              {!confirmingDelete ? <button className="delete-profile" type="button" onClick={() => setConfirmingDelete(true)}>DELETE PLAYER PROFILE</button> :
+                <div className="delete-confirm" role="alert"><span>DELETE {player.alias}? This removes the player and stats from this browser.</span><div><button type="button" onClick={() => setConfirmingDelete(false)}>KEEP PLAYER</button><button className="confirm-delete" type="button" onClick={() => onDelete(player.id)}>YES, DELETE</button></div></div>}
+            </div>
           </div>
         </div>
       </div>
@@ -498,6 +504,9 @@ function Registration({ onClose, onCreate }) {
 
 function Scorekeeper({ players, setPlayers }) {
   const [selected, setSelected] = useState(players[0]?.id || '');
+  useEffect(() => {
+    if (!players.some(player => player.id === selected)) setSelected(players[0]?.id || '');
+  }, [players, selected]);
   const player = players.find(p => p.id === selected) || players[0];
   if (!player) return null;
   const add = (stat, amount) => setPlayers(prev => prev.map(p => p.id === player.id ? { ...p, stats: { ...p.stats, [stat]: Math.max(0, +(p.stats[stat] + amount).toFixed(1)) } } : p));
@@ -517,11 +526,12 @@ function App() {
   const [players, setPlayersState] = useState(() => {
     try {
       const saved = localStorage.getItem('fcc-players');
-      if (!saved) return seedPlayers;
+      const deleted = JSON.parse(localStorage.getItem('fcc-deleted-player-ids') || '[]');
+      if (!saved) return seedPlayers.filter(player => !deleted.includes(player.id));
       const stored = JSON.parse(saved);
       const custom = stored.filter(player => !seedPlayers.some(seed => seed.id === player.id));
-      const demos = seedPlayers.map(seed => ({ ...stored.find(player => player.id === seed.id), ...seed }));
-      return [...demos, ...custom];
+      const demos = seedPlayers.filter(seed => !deleted.includes(seed.id)).map(seed => ({ ...stored.find(player => player.id === seed.id), ...seed }));
+      return [...demos, ...custom.filter(player => !deleted.includes(player.id))];
     } catch { return seedPlayers; }
   });
   const [profile, setProfile] = useState(null);
@@ -534,6 +544,14 @@ function App() {
   }, [players]);
   const leaders = useMemo(() => [...players].sort((a, b) => b.stats.pts - a.stats.pts), [players]);
   const created = (player) => { setPlayersState(prev => [...prev, player]); setRegister(false); setProfile(player); };
+  const deletePlayer = (id) => {
+    setPlayersState(prev => prev.filter(player => player.id !== id));
+    try {
+      const deleted = JSON.parse(localStorage.getItem('fcc-deleted-player-ids') || '[]');
+      if (!deleted.includes(id)) localStorage.setItem('fcc-deleted-player-ids', JSON.stringify([...deleted, id]));
+    } catch { console.warn('Deleted player state could not be saved in this browser.'); }
+    setProfile(null);
+  };
   const scrollTo = (id) => { setMenu(false); document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }); };
   return <>
     <header>
@@ -597,7 +615,7 @@ function App() {
       </section>
     </main>
     <footer><Logo small /><p>REAL HOOPS. UNREAL PERSONALITY.</p><div><button onClick={() => scrollTo('players')}>PLAYERS</button><button onClick={() => scrollTo('tour')}>TOUR</button><button onClick={() => scrollTo('rules')}>THE RULES</button></div><small>© 2026 FULL COURT CHAOS · ALL KIDS DESERVE A SPOTLIGHT</small></footer>
-    <PlayerModal player={profile} onClose={() => setProfile(null)} />
+    <PlayerModal player={profile} onClose={() => setProfile(null)} onDelete={deletePlayer} />
     {register && <Registration onClose={() => setRegister(false)} onCreate={created} />}
   </>;
 }
