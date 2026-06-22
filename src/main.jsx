@@ -111,18 +111,18 @@ function preparePhoto(file) {
 }
 
 const POSES = [
-  { id: 'ready', name: 'READY STANCE', src: [90, 20, 235, 292], head: [91, 4, 46, 60] },
-  { id: 'dribble-left', name: 'LEFT DRIBBLE', src: [455, 35, 260, 280], head: [126, 7, 45, 61] },
-  { id: 'dribble-right', name: 'RIGHT DRIBBLE', src: [830, 40, 255, 280], head: [105, 6, 45, 72] },
-  { id: 'crossover', name: 'LOW CROSSOVER', src: [1150, 55, 310, 275], head: [155, 10, 47, 73] },
-  { id: 'jump-shot', name: 'JUMP SHOT', src: [115, 316, 190, 330], head: [67, 52, 55, 70] },
-  { id: 'one-hand-dunk', name: 'ONE-HAND DUNK', src: [445, 305, 285, 355], head: [92, 58, 54, 70] },
-  { id: 'two-hand-dunk', name: 'TWO-HAND DUNK', src: [830, 310, 220, 340], head: [73, 65, 52, 71] },
-  { id: 'layup', name: 'RUNNING LAYUP', src: [1155, 310, 310, 355], head: [106, 60, 56, 69] },
-  { id: 'defense', name: 'LOCKDOWN D', src: [70, 680, 260, 300], head: [108, 27, 56, 76] },
-  { id: 'crowd', name: 'CROWD ROAR', src: [440, 635, 255, 350], head: [85, 58, 56, 68] },
-  { id: 'point', name: 'CALL YOUR SHOT', src: [805, 640, 245, 345], head: [69, 43, 57, 67] },
-  { id: 'flex', name: 'FLEX MODE', src: [1175, 640, 225, 345], head: [84, 43, 57, 66] },
+  { id: 'ready', name: 'READY STANCE', src: [90, 20, 235, 292], head: [90, 5, 47, 59], ball: [38, 150, 23] },
+  { id: 'dribble-left', name: 'LEFT DRIBBLE', src: [455, 35, 260, 280], head: [126, 9, 44, 74], ball: [43, 147, 25] },
+  { id: 'dribble-right', name: 'RIGHT DRIBBLE', src: [830, 40, 255, 280], head: [104, 9, 44, 73], ball: [190, 134, 24] },
+  { id: 'crossover', name: 'LOW CROSSOVER', src: [1150, 55, 310, 275], head: [155, 12, 45, 73], ball: [190, 200, 25] },
+  { id: 'jump-shot', name: 'JUMP SHOT', src: [115, 316, 190, 330], head: [70, 52, 55, 70], ball: [85, 31, 21] },
+  { id: 'one-hand-dunk', name: 'ONE-HAND DUNK', src: [445, 305, 285, 355], head: [93, 59, 54, 70], ball: [64, 35, 21] },
+  { id: 'two-hand-dunk', name: 'TWO-HAND DUNK', src: [830, 310, 220, 340], head: [72, 69, 52, 71], ball: [94, 43, 23] },
+  { id: 'layup', name: 'RUNNING LAYUP', src: [1155, 310, 310, 355], head: [105, 58, 56, 69], ball: [223, 42, 22] },
+  { id: 'defense', name: 'LOCKDOWN D', src: [70, 680, 260, 300], head: [108, 31, 56, 76], ball: [220, 170, 22] },
+  { id: 'crowd', name: 'CROWD ROAR', src: [440, 635, 255, 350], head: [78, 44, 56, 68], ball: [205, 38, 21] },
+  { id: 'point', name: 'CALL YOUR SHOT', src: [805, 640, 245, 345], head: [64, 31, 57, 67], ball: [35, 195, 22] },
+  { id: 'flex', name: 'FLEX MODE', src: [1175, 640, 225, 345], head: [80, 30, 57, 66], ball: [190, 125, 22] },
 ];
 
 let bodyPixModelPromise;
@@ -217,7 +217,7 @@ function makeFaceSprite(image, labels, width, height, face) {
   const cropX = clamp(centerX - cropW / 2, 0, Math.max(0, width - cropW));
   const cropY = clamp(face.minY - face.height * .3, 0, Math.max(0, height - cropH));
   const head = document.createElement('canvas');
-  head.width = 56; head.height = 70;
+  head.width = 36; head.height = 45;
   const context = head.getContext('2d', { willReadFrequently: true });
   context.imageSmoothingEnabled = true;
   context.drawImage(image, cropX, cropY, cropW, cropH, 0, 0, head.width, head.height);
@@ -236,7 +236,7 @@ function makeFaceSprite(image, labels, width, height, face) {
     }
     const dither = (bayer[y % 4][x % 4] - 7.5) * 1.45;
     for (let channel = 0; channel < 3; channel++) {
-      pixels.data[index + channel] = clamp(Math.round((pixels.data[index + channel] + dither) / 18) * 18, 0, 255);
+      pixels.data[index + channel] = clamp(Math.round((pixels.data[index + channel] + dither) / 24) * 24, 0, 255);
     }
     pixels.data[index + 3] = 255;
     originalAlpha[y * head.width + x] = 255;
@@ -340,6 +340,38 @@ function alphaBounds(canvas) {
   return { x: Math.max(0, minX - 7), y: Math.max(0, minY - 7), width: Math.min(canvas.width - minX + 7, maxX - minX + 15), height: Math.min(canvas.height - minY + 7, maxY - minY + 15) };
 }
 
+function drawPoweredBall(context, x, y, radius) {
+  const sprite = document.createElement('canvas');
+  sprite.width = 32; sprite.height = 28;
+  const fire = sprite.getContext('2d');
+  fire.imageSmoothingEnabled = false;
+  fire.fillStyle = '#8e1024';
+  fire.beginPath();
+  fire.moveTo(4, 20); fire.lineTo(2, 12); fire.lineTo(8, 9); fire.lineTo(10, 1); fire.lineTo(15, 8);
+  fire.lineTo(20, 0); fire.lineTo(22, 9); fire.lineTo(29, 5); fire.lineTo(26, 17); fire.lineTo(30, 22);
+  fire.closePath(); fire.fill();
+  fire.fillStyle = '#ff4b16';
+  fire.beginPath();
+  fire.moveTo(7, 20); fire.lineTo(8, 13); fire.lineTo(13, 9); fire.lineTo(15, 3); fire.lineTo(19, 10);
+  fire.lineTo(24, 5); fire.lineTo(23, 15); fire.lineTo(27, 21); fire.closePath(); fire.fill();
+  fire.fillStyle = '#ffd335';
+  fire.beginPath(); fire.moveTo(11, 19); fire.lineTo(13, 12); fire.lineTo(17, 7); fire.lineTo(19, 14); fire.lineTo(23, 19); fire.closePath(); fire.fill();
+  fire.fillStyle = '#08091d';
+  fire.beginPath(); fire.arc(16, 17, 12, 0, Math.PI * 2); fire.fill();
+  fire.fillStyle = '#ed6419';
+  fire.beginPath(); fire.arc(16, 17, 10, 0, Math.PI * 2); fire.fill();
+  fire.strokeStyle = '#34110c'; fire.lineWidth = 2;
+  fire.beginPath(); fire.arc(16, 17, 9, 0, Math.PI * 2); fire.stroke();
+  fire.beginPath(); fire.moveTo(6, 17); fire.lineTo(26, 17); fire.stroke();
+  fire.beginPath(); fire.arc(11, 17, 8, -Math.PI / 2, Math.PI / 2); fire.stroke();
+  fire.beginPath(); fire.arc(21, 17, 8, Math.PI / 2, Math.PI * 1.5); fire.stroke();
+  fire.fillStyle = '#ffdf55'; fire.fillRect(10, 11, 4, 3);
+  const scale = radius / 10;
+  const safeY = Math.max(y, radius * 1.7);
+  context.imageSmoothingEnabled = false;
+  context.drawImage(sprite, Math.round(x - 16 * scale), Math.round(safeY - 17 * scale), Math.round(32 * scale), Math.round(28 * scale));
+}
+
 async function renderPoseAvatar(identity, poseIndex, onStage = () => {}) {
   const pose = POSES[poseIndex % POSES.length];
   onStage(`BUILDING ${pose.name}…`);
@@ -375,6 +407,7 @@ async function renderPoseAvatar(identity, poseIndex, onStage = () => {}) {
   context.fill();
   context.restore();
   context.drawImage(face, headX, headY, headWidth, headHeight);
+  drawPoweredBall(context, ...pose.ball);
   const bounds = alphaBounds(cell);
   const output = document.createElement('canvas');
   output.width = 576; output.height = 720;
