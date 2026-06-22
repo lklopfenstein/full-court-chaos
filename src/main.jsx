@@ -110,15 +110,139 @@ function preparePhoto(file) {
   });
 }
 
-async function forgeArcadeAvatar(photo, player) {
-  const response = await fetch('/api/pixelize', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ photo, alias: player.alias, position: player.position }),
+let bodyPixModelPromise;
+
+function getBodyPixModel() {
+  if (!bodyPixModelPromise) {
+    bodyPixModelPromise = Promise.all([
+      import('@tensorflow/tfjs'),
+      import('@tensorflow-models/body-pix'),
+    ]).then(async ([tf, bodyPix]) => {
+      await tf.ready();
+      const net = await bodyPix.load({
+        architecture: 'MobileNetV1', outputStride: 16, multiplier: 0.75, quantBytes: 2,
+      });
+      return { net, bodyPix };
+    });
+  }
+  return bodyPixModelPromise;
+}
+
+function loadImage(source) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error('That photo could not be opened.'));
+    image.src = source;
   });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok || !data.avatar) throw new Error(data.error || 'The avatar forge missed that shot. Please try again.');
-  return { avatar: data.avatar, photo };
+}
+
+function tintPixel(data, index, color, strength) {
+  data[index] = data[index] * (1 - strength) + color[0] * strength;
+  data[index + 1] = data[index + 1] * (1 - strength) + color[1] * strength;
+  data[index + 2] = data[index + 2] * (1 - strength) + color[2] * strength;
+}
+
+function drawPixelBall(context, x, y, radius) {
+  context.fillStyle = '#0a0b20';
+  context.beginPath(); context.arc(x, y, radius + 2, 0, Math.PI * 2); context.fill();
+  context.fillStyle = '#ee6b18';
+  context.beginPath(); context.arc(x, y, radius, 0, Math.PI * 2); context.fill();
+  context.strokeStyle = '#30130b'; context.lineWidth = 2;
+  context.beginPath(); context.arc(x, y, radius * .96, 0, Math.PI * 2); context.stroke();
+  context.beginPath(); context.moveTo(x - radius, y); context.lineTo(x + radius, y); context.stroke();
+  context.beginPath(); context.arc(x - radius * .45, y, radius * .8, -Math.PI / 2, Math.PI / 2); context.stroke();
+  context.beginPath(); context.arc(x + radius * .45, y, radius * .8, Math.PI / 2, Math.PI * 1.5); context.stroke();
+}
+
+async function forgeArcadeAvatar(photo, player, onStage = () => {}) {
+  onStage('LOADING THE FREE PIXEL ENGINE…');
+  const [{ net }, image] = await Promise.all([getBodyPixModel(), loadImage(photo)]);
+  onStage('CUTTING OUT YOUR PLAYER…');
+  const parts = await net.segmentPersonParts(image, {
+    flipHorizontal: false, internalResolution: 'high', segmentationThreshold: 0.62,
+    maxDetections: 1, scoreThreshold: 0.25, nmsRadius: 20,
+  });
+
+  const { width, height, data: labels } = parts;
+  let minX = width, minY = height, maxX = 0, maxY = 0, pixels = 0, footPixels = 0;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const label = labels[y * width + x];
+      if (label < 0) continue;
+      pixels++;
+      if (label === 22 || label === 23) footPixels++;
+      minX = Math.min(minX, x); minY = Math.min(minY, y); maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
+    }
+  }
+  if (pixels < width * height * .025) throw new Error('We could not find one clear player. Try a brighter full-body photo.');
+  if (footPixels < 8 && (maxY - minY) / height < .5) throw new Error('Use a full-body photo with the player’s shoes visible so the sprite has true game proportions.');
+
+  onStage('COLORING THE CHAOS UNIFORM…');
+  const source = document.createElement('canvas');
+  source.width = width; source.height = height;
+  const sourceContext = source.getContext('2d', { willReadFrequently: true });
+  sourceContext.drawImage(image, 0, 0, width, height);
+  const cutout = sourceContext.getImageData(0, 0, width, height);
+  const navy = [14, 31, 105], pink = [244, 37, 157], cream = [255, 239, 206];
+  for (let i = 0; i < labels.length; i++) {
+    const pixel = i * 4, label = labels[i];
+    if (label < 0) { cutout.data[pixel + 3] = 0; continue; }
+    if (label === 12 || label === 13) tintPixel(cutout.data, pixel, navy, .68);
+    if (label >= 14 && label <= 17) tintPixel(cutout.data, pixel, navy, .54);
+    if ((label === 12 || label === 13 || (label >= 14 && label <= 17)) && i % 17 < 2) tintPixel(cutout.data, pixel, pink, .34);
+    if (label === 22 || label === 23) tintPixel(cutout.data, pixel, cream, .32);
+  }
+  sourceContext.putImageData(cutout, 0, 0);
+
+  const paddingX = Math.max(4, (maxX - minX) * .09), paddingY = Math.max(4, (maxY - minY) * .05);
+  minX = clamp(minX - paddingX, 0, width); maxX = clamp(maxX + paddingX, 0, width);
+  minY = clamp(minY - paddingY, 0, height); maxY = clamp(maxY + paddingY, 0, height);
+  const cropW = maxX - minX, cropH = maxY - minY;
+  const logical = document.createElement('canvas');
+  logical.width = 144; logical.height = 216;
+  const logicalContext = logical.getContext('2d', { willReadFrequently: true });
+  const scale = Math.min(124 / cropW, 196 / cropH);
+  const drawW = cropW * scale, drawH = cropH * scale;
+  const drawX = (logical.width - drawW) / 2, drawY = logical.height - drawH - 8;
+  logicalContext.imageSmoothingEnabled = true;
+  logicalContext.drawImage(source, minX, minY, cropW, cropH, drawX, drawY, drawW, drawH);
+
+  const sprite = logicalContext.getImageData(0, 0, logical.width, logical.height);
+  const original = new Uint8ClampedArray(sprite.data);
+  const bayer = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]];
+  for (let y = 0; y < logical.height; y++) {
+    for (let x = 0; x < logical.width; x++) {
+      const index = (y * logical.width + x) * 4;
+      if (sprite.data[index + 3] < 70) { sprite.data[index + 3] = 0; continue; }
+      const dither = (bayer[y % 4][x % 4] - 7.5) * 1.6;
+      for (let channel = 0; channel < 3; channel++) {
+        sprite.data[index + channel] = clamp(Math.round((sprite.data[index + channel] + dither) / 24) * 24, 0, 255);
+      }
+      sprite.data[index + 3] = 255;
+    }
+  }
+  for (let y = 1; y < logical.height - 1; y++) {
+    for (let x = 1; x < logical.width - 1; x++) {
+      const index = (y * logical.width + x) * 4;
+      if (sprite.data[index + 3] !== 0) continue;
+      let neighbor = false;
+      for (let oy = -1; oy <= 1 && !neighbor; oy++) for (let ox = -1; ox <= 1; ox++) {
+        if (original[((y + oy) * logical.width + x + ox) * 4 + 3] > 120) { neighbor = true; break; }
+      }
+      if (neighbor) { sprite.data[index] = 7; sprite.data[index + 1] = 9; sprite.data[index + 2] = 29; sprite.data[index + 3] = 255; }
+    }
+  }
+  logicalContext.putImageData(sprite, 0, 0);
+  drawPixelBall(logicalContext, logical.width * .18, logical.height * .52, 14);
+
+  onStage('UPSIZING WITH ARCADE PIXELS…');
+  const output = document.createElement('canvas');
+  output.width = 576; output.height = 864;
+  const outputContext = output.getContext('2d');
+  outputContext.imageSmoothingEnabled = false;
+  outputContext.drawImage(logical, 0, 0, output.width, output.height);
+  return { avatar: output.toDataURL('image/png'), photo, player };
 }
 
 function Logo({ small = false }) {
@@ -187,7 +311,7 @@ function Registration({ onClose, onCreate }) {
       const prepared = await preparePhoto(file);
       setSourcePhoto(prepared);
       setForgeStatus('BUILDING YOUR GAME SPRITE…');
-      const result = await forgeArcadeAvatar(prepared, form);
+      const result = await forgeArcadeAvatar(prepared, form, setForgeStatus);
       setAvatar(result.avatar);
       setForgeStatus('PLAYER RENDER COMPLETE');
     } catch (error) {
@@ -225,7 +349,7 @@ function Registration({ onClose, onCreate }) {
           </div>
         </> : <>
           <h2>PIXEL MODE:<br/><em>ACTIVATED</em></h2>
-          <p className="form-intro">Upload a clear photo with the player’s face visible. The avatar forge preserves their identity, then rebuilds them as a digitized arcade-game sprite.</p>
+          <p className="form-intro">Upload one clear, full-body photo with the player’s face and shoes visible. The free on-device forge cuts them out and rebuilds the photo as a digitized arcade-game sprite.</p>
           <div className="photo-step">
             <label className={`upload-zone ${forgeStatus && !avatar ? 'forging' : ''}`}>
               {avatar ? <PixelAvatar player={generated} /> : sourcePhoto ? <img className="source-photo" src={sourcePhoto} alt="Uploaded player awaiting arcade conversion" /> : <><span className="upload-icon">＋</span><b>DROP YOUR PLAYER PHOTO</b><small>JPG, PNG, or WEBP · 10 MB max</small></>}
@@ -235,7 +359,7 @@ function Registration({ onClose, onCreate }) {
             <div className="mini-card"><span>PLAYER PREVIEW</span><h3>{generated.alias.toUpperCase()}</h3><b>#{generated.number}</b><p>{generated.position} · {generated.city || 'HOMETOWN'}</p></div>
           </div>
           {forgeError && <div className="forge-error">⚠ {forgeError}</div>}
-          <p className="privacy-note">GUARDIAN NOTE: The photo is sent securely for one-time avatar generation. Full Court Chaos does not save the original upload in this prototype.</p>
+          <p className="privacy-note">100% FREE + PRIVATE: The conversion runs on this device. The original photo never leaves the browser and there are no API or generation fees.</p>
         </>}
         <div className="form-actions">{step === 2 && <button type="button" className="back-btn" onClick={() => setStep(1)}>‹ BACK</button>}<button className="primary-btn" disabled={step === 2 && (!avatar || Boolean(forgeStatus && !avatar))} type="submit">{step === 1 ? 'NEXT: PIXELIZE ME' : 'LOCK IN PLAYER'} <span>››</span></button></div>
       </form>
