@@ -244,52 +244,96 @@ function fillPolygon(context, color, points) {
 function makePixelFaceSprite(landmarkFace, image, skin, hair, bodyFace) {
   const points = landmarkFace.keypoints;
   const box = landmarkFace.box;
-  const forehead = points[10] || { x: box.xMin + box.width * .5, y: box.yMin + box.height * .14 };
-  const hairDepth = clamp(Math.round(8 + ((forehead.y - bodyFace.minY) / Math.max(1, bodyFace.height)) * 9), 8, 15);
-  const canvas = document.createElement('canvas');
-  canvas.width = 40; canvas.height = 52;
-  const context = canvas.getContext('2d');
-  context.imageSmoothingEnabled = false;
+  const safePoint = (index, fallback) => points[index] || fallback;
+  const averagePoint = (first, second) => ({ x: (first.x + second.x) / 2, y: (first.y + second.y) / 2 });
+  const leftEye = averagePoint(
+    safePoint(33, { x: box.xMin + box.width * .34, y: box.yMin + box.height * .42 }),
+    safePoint(133, { x: box.xMin + box.width * .43, y: box.yMin + box.height * .42 }),
+  );
+  const rightEye = averagePoint(
+    safePoint(362, { x: box.xMin + box.width * .57, y: box.yMin + box.height * .42 }),
+    safePoint(263, { x: box.xMin + box.width * .66, y: box.yMin + box.height * .42 }),
+  );
+  const orderedEyes = [leftEye, rightEye].sort((first, second) => first.x - second.x);
+  const nose = safePoint(1, { x: box.xMin + box.width * .5, y: box.yMin + box.height * .62 });
+  const mouthLeft = safePoint(61, { x: box.xMin + box.width * .4, y: box.yMin + box.height * .76 });
+  const mouthRight = safePoint(291, { x: box.xMin + box.width * .6, y: box.yMin + box.height * .76 });
+  const mouthCenter = averagePoint(safePoint(13, mouthLeft), safePoint(14, mouthRight));
+  const forehead = safePoint(10, { x: box.xMin + box.width * .5, y: box.yMin + box.height * .14 });
+  const mapX = point => clamp(Math.round(2 + ((point.x - box.xMin) / box.width) * 16), 3, 17);
+  const mapY = point => clamp(Math.round(2 + ((point.y - box.yMin) / box.height) * 21), 3, 23);
+  const eyeY = clamp(Math.round((mapY(orderedEyes[0]) + mapY(orderedEyes[1])) / 2), 9, 13);
+  const eyeX = [clamp(mapX(orderedEyes[0]), 6, 9), clamp(mapX(orderedEyes[1]), 11, 14)];
+  const noseX = clamp(mapX(nose), 9, 11);
+  const noseY = clamp(mapY(nose), eyeY + 2, 18);
+  const mouthY = clamp(mapY(mouthCenter), noseY + 2, 21);
+  const mouthWidth = clamp(Math.round(Math.abs(mapX(mouthRight) - mapX(mouthLeft))), 3, 5);
+  const hairDepth = clamp(Math.round(4 + ((forehead.y - bodyFace.minY) / Math.max(1, bodyFace.height)) * 5), 4, 8);
+  const sprite = document.createElement('canvas');
+  sprite.width = 20; sprite.height = 26;
+  const context = sprite.getContext('2d');
   const outline = '#07091d';
-  const shadow = colorCss(shadeColor(skin, .66));
-  fillPolygon(context, outline, [[11,1],[29,1],[35,6],[38,17],[37,34],[31,45],[25,51],[15,51],[9,45],[3,34],[2,17],[5,7]]);
-  fillPolygon(context, colorCss(skin), [[10,2],[30,2],[35,6],[37,17],[36,34],[30,45],[24,51],[16,51],[10,45],[3,34],[2,17],[6,6]]);
-  context.fillStyle = outline; context.fillRect(0, 20, 5, 12); context.fillRect(35, 20, 5, 12);
-  context.fillStyle = colorCss(skin); context.fillRect(2, 21, 4, 9); context.fillRect(34, 21, 4, 9);
-  fillPolygon(context, shadow, [[29,6],[33,9],[35,19],[34,33],[29,43],[24,48],[24,8]]);
+  const skinDeep = colorCss(shadeColor(skin, .5));
+  const skinShadow = colorCss(shadeColor(skin, .72));
+  const skinBase = colorCss(skin);
+  const skinLight = colorCss(shadeColor(skin, 1.13));
+  const skinBright = colorCss(shadeColor(skin, 1.28));
+  const hairShadow = colorCss(shadeColor(hair, .55));
+  const hairBase = colorCss(hair);
+  const hairLight = colorCss(shadeColor(hair, 1.35));
+
+  fillPolygon(context, outline, [[6,0],[14,0],[17,2],[19,8],[18,18],[15,23],[12,26],[8,26],[5,23],[2,18],[1,8],[3,2]]);
+  fillPolygon(context, skinBase, [[6,1],[14,1],[17,3],[18,8],[17,17],[15,22],[12,25],[8,25],[5,22],[3,17],[2,8],[4,3]]);
+  context.fillStyle = outline; context.fillRect(0, 10, 3, 6); context.fillRect(17, 10, 3, 6);
+  context.fillStyle = skinBase; context.fillRect(1, 11, 2, 4); context.fillRect(17, 11, 2, 4);
+
+  // The photograph contributes only light and shadow. Every visible face color
+  // comes from the exact same skin palette used on the body, which removes the
+  // pasted-on-photo seam while retaining recognizable facial structure.
   const texture = document.createElement('canvas');
-  // The defining NBA Jam look is a tiny, posterized photograph—not a second
-  // cartoon face painted over the player. Keep enough source pixels for the
-  // person's real expression to survive, then let nearest-neighbor scaling do
-  // the visible pixel work.
-  texture.width = 28; texture.height = 38;
+  texture.width = 14; texture.height = 19;
   const textureContext = texture.getContext('2d', { willReadFrequently: true });
   textureContext.imageSmoothingEnabled = true;
   textureContext.drawImage(image, box.xMin, box.yMin, box.width, box.height, 0, 0, texture.width, texture.height);
-  const texturePixels = textureContext.getImageData(0, 0, texture.width, texture.height);
-  const bayer = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
-  const colorStep = 24;
-  for (let index = 0; index < texturePixels.data.length; index += 4) {
-    const pixel = index / 4;
-    const x = pixel % texture.width;
-    const y = Math.floor(pixel / texture.width);
-    const dither = (bayer[(y % 4) * 4 + (x % 4)] - 7.5) * 1.15;
-    for (let channel = 0; channel < 3; channel++) {
-      const value = (texturePixels.data[index + channel] - 128) * 1.08 + 128 + dither;
-      texturePixels.data[index + channel] = clamp(Math.round(value / colorStep) * colorStep, 0, 255);
-    }
-  }
-  textureContext.putImageData(texturePixels, 0, 0);
+  const texturePixels = textureContext.getImageData(0, 0, texture.width, texture.height).data;
+  const skinLuma = Math.max(24, skin[0] * .3 + skin[1] * .59 + skin[2] * .11);
   context.save();
-  context.beginPath(); context.ellipse(20, 25.5, 15, 21.5, 0, 0, Math.PI * 2); context.clip();
-  context.globalAlpha = .88;
-  context.drawImage(texture, 5, 4, 30, 44);
+  context.beginPath(); context.ellipse(10, 13, 7.5, 10.8, 0, 0, Math.PI * 2); context.clip();
+  for (let y = 0; y < texture.height; y++) for (let x = 0; x < texture.width; x++) {
+    const index = (y * texture.width + x) * 4;
+    const luma = texturePixels[index] * .3 + texturePixels[index + 1] * .59 + texturePixels[index + 2] * .11;
+    const relativeLight = luma / skinLuma;
+    context.fillStyle = relativeLight < .58 ? skinDeep : relativeLight < .82 ? skinShadow : relativeLight < 1.08 ? skinBase : relativeLight < 1.28 ? skinLight : skinBright;
+    context.fillRect(x + 3, y + 3, 1, 1);
+  }
   context.restore();
-  fillPolygon(context, colorCss(hair), [[8,5],[12,1],[29,1],[35,7],[34,hairDepth],[29,hairDepth - 2],[25,hairDepth + 1],[20,hairDepth - 1],[15,hairDepth + 1],[10,hairDepth - 1],[6,hairDepth + 2],[5,10]]);
-  // Preserve the photographic eyes, nose, and mouth. The old white eye blocks
-  // and painted lips made every upload look like the same retro RPG character.
-  // No synthetic eye or mouth marks are added here; those details remain the
-  // player's own and stay consistent with the digitized-photo roster style.
+
+  fillPolygon(context, hairShadow, [[4,3],[5,1],[7,0],[14,0],[17,2],[18,5],[17,hairDepth + 1],[15,hairDepth],[13,hairDepth + 1],[10,hairDepth],[8,hairDepth + 1],[5,hairDepth],[3,hairDepth + 1],[3,5]]);
+  fillPolygon(context, hairBase, [[5,2],[7,1],[14,1],[16,2],[17,4],[16,hairDepth],[14,hairDepth - 1],[12,hairDepth],[10,hairDepth - 1],[8,hairDepth],[6,hairDepth - 1],[4,hairDepth],[4,4]]);
+  context.fillStyle = hairLight;
+  context.fillRect(7, 2, 3, 1); context.fillRect(12, 2, 2, 1);
+
+  context.fillStyle = hairShadow;
+  context.fillRect(eyeX[0] - 1, eyeY - 2, 3, 1); context.fillRect(eyeX[1] - 1, eyeY - 2, 3, 1);
+  context.fillStyle = '#f3e6cf';
+  context.fillRect(eyeX[0] - 1, eyeY, 2, 1); context.fillRect(eyeX[1] - 1, eyeY, 2, 1);
+  context.fillStyle = outline;
+  context.fillRect(eyeX[0], eyeY, 1, 1); context.fillRect(eyeX[1], eyeY, 1, 1);
+  context.fillStyle = skinShadow;
+  context.fillRect(noseX + 1, eyeY + 2, 1, Math.max(1, noseY - eyeY - 1));
+  context.fillRect(noseX, noseY, 2, 1);
+  context.fillStyle = skinLight;
+  context.fillRect(noseX, eyeY + 2, 1, Math.max(1, noseY - eyeY - 2));
+  context.fillStyle = skinDeep;
+  context.fillRect(Math.round(10 - mouthWidth / 2), mouthY, mouthWidth, 1);
+  context.fillStyle = skinLight;
+  context.fillRect(7, eyeY + 4, 1, 1); context.fillRect(13, eyeY + 4, 1, 1);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 40; canvas.height = 52;
+  const output = canvas.getContext('2d');
+  output.imageSmoothingEnabled = false;
+  output.drawImage(sprite, 0, 0, canvas.width, canvas.height);
   return canvas.toDataURL('image/png');
 }
 
@@ -394,7 +438,7 @@ async function renderPoseAvatar(identity, poseIndex, onStage = () => {}) {
   context.imageSmoothingEnabled = false;
   const [slotX, slotY, slotWidth, slotHeight] = pose.head;
   const faceAspect = 40 / 52;
-  const headWidth = Math.min(slotWidth, slotHeight * faceAspect) * .9;
+  const headWidth = Math.min(slotWidth, slotHeight * faceAspect) * .78;
   const headHeight = headWidth / faceAspect;
   const headX = slotX + (slotWidth - headWidth) / 2;
   const headY = slotY + (slotHeight - headHeight) / 2;
@@ -555,7 +599,7 @@ function Registration({ onClose, onCreate }) {
           </div>
         </> : <>
           <h2>PIXEL MODE:<br/><em>ACTIVATED</em></h2>
-          <p className="form-intro">A clear headshot is enough. The free on-device forge keeps the player’s real facial features, reads their skin tone, and builds a complete digitized arcade player from 12 full-body poses.</p>
+          <p className="form-intro">A clear headshot is enough. The free on-device forge maps the player’s face shape, skin tone, hair, and expression onto the same native pixel grid as the body, then builds a complete arcade player from 12 full-body poses.</p>
           <div className="photo-step">
             <label className={`upload-zone ${forgeStatus && !avatar ? 'forging' : ''}`}>
               {avatar ? <PixelAvatar player={generated} /> : sourcePhoto ? <img className="source-photo" src={sourcePhoto} alt="Uploaded player awaiting arcade conversion" /> : <><span className="upload-icon">＋</span><b>DROP YOUR PLAYER PHOTO</b><small>JPG, PNG, or WEBP · 10 MB max</small></>}
