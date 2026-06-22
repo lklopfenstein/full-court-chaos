@@ -192,7 +192,25 @@ function sampleSkinTone(sourcePixels, labels, width, face) {
   return [median(reds), median(greens), median(blues)];
 }
 
-function makeFaceSprite(image, sourceContext, labels, width, height, face) {
+function sampleHairTone(sourcePixels, labels, width, height, face) {
+  const samples = [];
+  const minX = Math.max(0, Math.floor(face.minX - face.width * .2));
+  const maxX = Math.min(width - 1, Math.ceil(face.maxX + face.width * .2));
+  const minY = Math.max(0, Math.floor(face.minY - face.height * .48));
+  const maxY = Math.min(height - 1, Math.ceil(face.minY + face.height * .28));
+  for (let y = minY; y <= maxY; y += 2) for (let x = minX; x <= maxX; x += 2) {
+    if (labels[y * width + x] < 0) continue;
+    const index = (y * width + x) * 4;
+    const color = [sourcePixels[index], sourcePixels[index + 1], sourcePixels[index + 2]];
+    samples.push({ color, light: color[0] * .3 + color[1] * .59 + color[2] * .11 });
+  }
+  if (samples.length < 12) return [42, 28, 24];
+  samples.sort((a, b) => a.light - b.light);
+  const hair = samples.slice(0, Math.max(8, Math.floor(samples.length * .42)));
+  return [median(hair.map(sample => sample.color[0])), median(hair.map(sample => sample.color[1])), median(hair.map(sample => sample.color[2]))];
+}
+
+function makeFaceSprite(image, labels, width, height, face) {
   const cropW = face.width * 1.34;
   const cropH = face.height * 1.42;
   const centerX = (face.minX + face.maxX) / 2;
@@ -256,9 +274,12 @@ async function extractPlayerIdentity(photo, onStage = () => {}) {
   if (person.pixels < width * height * .018) throw new Error('We could not find one clear face. Try a brighter, front-facing photo.');
   if (face.pixels < Math.max(24, width * height * .00012)) throw new Error('Move closer and use a clear photo where the player’s face is visible.');
   const sourcePixels = sourceContext.getImageData(0, 0, width, height).data;
+  const skin = sampleSkinTone(sourcePixels, labels, width, face);
+  const hair = sampleHairTone(sourcePixels, labels, width, height, face);
   return {
-    face: makeFaceSprite(image, sourceContext, labels, width, height, face),
-    skin: sampleSkinTone(sourcePixels, labels, width, face),
+    face: makeFaceSprite(image, labels, width, height, face),
+    skin,
+    hair,
   };
 }
 
@@ -330,13 +351,30 @@ async function renderPoseAvatar(identity, poseIndex, onStage = () => {}) {
   removeSmallAlphaIslands(cell);
   recolorPose(cell, identity.skin);
   context.imageSmoothingEnabled = false;
+  const headX = pose.head[0] - pose.head[2] * .1;
+  const headY = pose.head[1] - pose.head[3] * .08;
+  const headWidth = pose.head[2] * 1.2;
+  const headHeight = pose.head[3] * 1.14;
   context.save();
   context.beginPath();
-  context.ellipse(pose.head[0] + pose.head[2] / 2, pose.head[1] + pose.head[3] / 2, pose.head[2] * .52, pose.head[3] * .52, 0, 0, Math.PI * 2);
+  context.ellipse(pose.head[0] + pose.head[2] / 2, pose.head[1] + pose.head[3] / 2, pose.head[2] * .54, pose.head[3] * .53, 0, 0, Math.PI * 2);
   context.clip();
-  context.clearRect(pose.head[0] - 3, pose.head[1] - 3, pose.head[2] + 6, pose.head[3] + 6);
+  context.clearRect(pose.head[0] - 4, pose.head[1] - 4, pose.head[2] + 8, pose.head[3] + 8);
   context.restore();
-  context.drawImage(face, ...pose.head);
+  context.fillStyle = `rgb(${identity.skin.join(',')})`;
+  context.beginPath();
+  context.moveTo(headX + headWidth * .38, headY + headHeight * .68);
+  context.lineTo(headX + headWidth * .62, headY + headHeight * .68);
+  context.lineTo(headX + headWidth * .68, headY + headHeight * .96);
+  context.lineTo(headX + headWidth * .32, headY + headHeight * .96);
+  context.closePath(); context.fill();
+  context.save();
+  context.fillStyle = `rgb(${identity.hair.join(',')})`;
+  context.beginPath();
+  context.ellipse(headX + headWidth / 2, headY + headHeight * .23, headWidth * .43, headHeight * .25, 0, Math.PI, Math.PI * 2);
+  context.fill();
+  context.restore();
+  context.drawImage(face, headX, headY, headWidth, headHeight);
   const bounds = alphaBounds(cell);
   const output = document.createElement('canvas');
   output.width = 576; output.height = 720;
