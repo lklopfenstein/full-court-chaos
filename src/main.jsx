@@ -110,7 +110,23 @@ function preparePhoto(file) {
   });
 }
 
+const POSES = [
+  { id: 'ready', name: 'READY STANCE', src: [90, 20, 235, 292], head: [91, 4, 46, 60] },
+  { id: 'dribble-left', name: 'LEFT DRIBBLE', src: [455, 35, 260, 280], head: [126, 7, 45, 61] },
+  { id: 'dribble-right', name: 'RIGHT DRIBBLE', src: [830, 40, 255, 280], head: [105, 6, 45, 72] },
+  { id: 'crossover', name: 'LOW CROSSOVER', src: [1150, 55, 310, 275], head: [155, 10, 47, 73] },
+  { id: 'jump-shot', name: 'JUMP SHOT', src: [115, 316, 190, 330], head: [67, 52, 55, 70] },
+  { id: 'one-hand-dunk', name: 'ONE-HAND DUNK', src: [445, 305, 285, 355], head: [92, 58, 54, 70] },
+  { id: 'two-hand-dunk', name: 'TWO-HAND DUNK', src: [830, 310, 220, 340], head: [73, 65, 52, 71] },
+  { id: 'layup', name: 'RUNNING LAYUP', src: [1155, 310, 310, 355], head: [106, 60, 56, 69] },
+  { id: 'defense', name: 'LOCKDOWN D', src: [70, 680, 260, 300], head: [108, 27, 56, 76] },
+  { id: 'crowd', name: 'CROWD ROAR', src: [440, 635, 255, 350], head: [85, 58, 56, 68] },
+  { id: 'point', name: 'CALL YOUR SHOT', src: [805, 640, 245, 345], head: [69, 43, 57, 67] },
+  { id: 'flex', name: 'FLEX MODE', src: [1175, 640, 225, 345], head: [84, 43, 57, 66] },
+];
+
 let bodyPixModelPromise;
+let poseAtlasPromise;
 
 function getBodyPixModel() {
   if (!bodyPixModelPromise) {
@@ -119,10 +135,9 @@ function getBodyPixModel() {
       import('@tensorflow-models/body-pix'),
     ]).then(async ([tf, bodyPix]) => {
       await tf.ready();
-      const net = await bodyPix.load({
+      return bodyPix.load({
         architecture: 'MobileNetV1', outputStride: 16, multiplier: 0.75, quantBytes: 2,
       });
-      return { net, bodyPix };
     });
   }
   return bodyPixModelPromise;
@@ -137,112 +152,206 @@ function loadImage(source) {
   });
 }
 
-function tintPixel(data, index, color, strength) {
-  data[index] = data[index] * (1 - strength) + color[0] * strength;
-  data[index + 1] = data[index + 1] * (1 - strength) + color[1] * strength;
-  data[index + 2] = data[index + 2] * (1 - strength) + color[2] * strength;
+function getPoseAtlas() {
+  if (!poseAtlasPromise) poseAtlasPromise = loadImage('/avatar/pose-atlas.png');
+  return poseAtlasPromise;
 }
 
-function drawPixelBall(context, x, y, radius) {
-  context.fillStyle = '#0a0b20';
-  context.beginPath(); context.arc(x, y, radius + 2, 0, Math.PI * 2); context.fill();
-  context.fillStyle = '#ee6b18';
-  context.beginPath(); context.arc(x, y, radius, 0, Math.PI * 2); context.fill();
-  context.strokeStyle = '#30130b'; context.lineWidth = 2;
-  context.beginPath(); context.arc(x, y, radius * .96, 0, Math.PI * 2); context.stroke();
-  context.beginPath(); context.moveTo(x - radius, y); context.lineTo(x + radius, y); context.stroke();
-  context.beginPath(); context.arc(x - radius * .45, y, radius * .8, -Math.PI / 2, Math.PI / 2); context.stroke();
-  context.beginPath(); context.arc(x + radius * .45, y, radius * .8, Math.PI / 2, Math.PI * 1.5); context.stroke();
+function median(values) {
+  if (!values.length) return 128;
+  values.sort((a, b) => a - b);
+  return values[Math.floor(values.length / 2)];
 }
 
-async function forgeArcadeAvatar(photo, player, onStage = () => {}) {
-  onStage('LOADING THE FREE PIXEL ENGINE…');
-  const [{ net }, image] = await Promise.all([getBodyPixModel(), loadImage(photo)]);
-  onStage('CUTTING OUT YOUR PLAYER…');
+function detectBounds(labels, width, height, accepts) {
+  let minX = width, minY = height, maxX = -1, maxY = -1, pixels = 0;
+  for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+    if (!accepts(labels[y * width + x])) continue;
+    pixels++;
+    minX = Math.min(minX, x); minY = Math.min(minY, y); maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
+  }
+  return { minX, minY, maxX, maxY, pixels, width: maxX - minX + 1, height: maxY - minY + 1 };
+}
+
+function sampleSkinTone(sourcePixels, labels, width, face) {
+  const reds = [], greens = [], blues = [];
+  const xInset = face.width * .18, top = face.minY + face.height * .18, bottom = face.minY + face.height * .88;
+  for (let y = Math.max(0, Math.floor(top)); y <= Math.min(face.maxY, Math.ceil(bottom)); y += 2) {
+    for (let x = Math.max(0, Math.floor(face.minX + xInset)); x <= Math.min(face.maxX, Math.ceil(face.maxX - xInset)); x += 2) {
+      const label = labels[y * width + x];
+      if (label !== 0 && label !== 1) continue;
+      const index = (y * width + x) * 4;
+      const r = sourcePixels[index], g = sourcePixels[index + 1], b = sourcePixels[index + 2];
+      const spread = Math.max(r, g, b) - Math.min(r, g, b);
+      if (r < 28 || g < 20 || b < 15 || r > 248 || g > 248 || b > 248) continue;
+      if (r < g * .82 || g < b * .72 || (spread < 7 && r < 115)) continue;
+      reds.push(r); greens.push(g); blues.push(b);
+    }
+  }
+  if (reds.length < 18) return [174, 112, 77];
+  return [median(reds), median(greens), median(blues)];
+}
+
+function makeFaceSprite(image, sourceContext, labels, width, height, face) {
+  const cropW = face.width * 1.34;
+  const cropH = face.height * 1.42;
+  const centerX = (face.minX + face.maxX) / 2;
+  const cropX = clamp(centerX - cropW / 2, 0, Math.max(0, width - cropW));
+  const cropY = clamp(face.minY - face.height * .3, 0, Math.max(0, height - cropH));
+  const head = document.createElement('canvas');
+  head.width = 56; head.height = 70;
+  const context = head.getContext('2d', { willReadFrequently: true });
+  context.imageSmoothingEnabled = true;
+  context.drawImage(image, cropX, cropY, cropW, cropH, 0, 0, head.width, head.height);
+  const pixels = context.getImageData(0, 0, head.width, head.height);
+  const originalAlpha = new Uint8ClampedArray(head.width * head.height);
+  const bayer = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]];
+  for (let y = 0; y < head.height; y++) for (let x = 0; x < head.width; x++) {
+    const index = (y * head.width + x) * 4;
+    const sourceX = clamp(Math.round(cropX + (x + .5) / head.width * cropW), 0, width - 1);
+    const sourceY = clamp(Math.round(cropY + (y + .5) / head.height * cropH), 0, height - 1);
+    const dx = (x + .5 - head.width / 2) / (head.width * .49);
+    const dy = (y + .5 - head.height * .51) / (head.height * .5);
+    if (labels[sourceY * width + sourceX] < 0 || dx * dx + dy * dy > 1) {
+      pixels.data[index + 3] = 0;
+      continue;
+    }
+    const dither = (bayer[y % 4][x % 4] - 7.5) * 1.45;
+    for (let channel = 0; channel < 3; channel++) {
+      pixels.data[index + channel] = clamp(Math.round((pixels.data[index + channel] + dither) / 18) * 18, 0, 255);
+    }
+    pixels.data[index + 3] = 255;
+    originalAlpha[y * head.width + x] = 255;
+  }
+  for (let y = 1; y < head.height - 1; y++) for (let x = 1; x < head.width - 1; x++) {
+    const index = (y * head.width + x) * 4;
+    if (pixels.data[index + 3]) continue;
+    let neighbor = false;
+    for (let oy = -1; oy <= 1 && !neighbor; oy++) for (let ox = -1; ox <= 1; ox++) {
+      if (originalAlpha[(y + oy) * head.width + x + ox]) { neighbor = true; break; }
+    }
+    if (neighbor) {
+      pixels.data[index] = 5; pixels.data[index + 1] = 8; pixels.data[index + 2] = 27; pixels.data[index + 3] = 255;
+    }
+  }
+  context.putImageData(pixels, 0, 0);
+  return head.toDataURL('image/png');
+}
+
+async function extractPlayerIdentity(photo, onStage = () => {}) {
+  onStage('LOADING THE FREE FACE ENGINE…');
+  const [net, image] = await Promise.all([getBodyPixModel(), loadImage(photo)]);
+  onStage('READING FACE + SKIN TONE…');
   const parts = await net.segmentPersonParts(image, {
     flipHorizontal: false, internalResolution: 'high', segmentationThreshold: 0.62,
     maxDetections: 1, scoreThreshold: 0.25, nmsRadius: 20,
   });
-
   const { width, height, data: labels } = parts;
-  let minX = width, minY = height, maxX = 0, maxY = 0, pixels = 0, footPixels = 0;
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const label = labels[y * width + x];
-      if (label < 0) continue;
-      pixels++;
-      if (label === 22 || label === 23) footPixels++;
-      minX = Math.min(minX, x); minY = Math.min(minY, y); maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
-    }
-  }
-  if (pixels < width * height * .025) throw new Error('We could not find one clear player. Try a brighter full-body photo.');
-  if (footPixels < 8 && (maxY - minY) / height < .5) throw new Error('Use a full-body photo with the player’s shoes visible so the sprite has true game proportions.');
-
-  onStage('COLORING THE CHAOS UNIFORM…');
   const source = document.createElement('canvas');
   source.width = width; source.height = height;
   const sourceContext = source.getContext('2d', { willReadFrequently: true });
   sourceContext.drawImage(image, 0, 0, width, height);
-  const cutout = sourceContext.getImageData(0, 0, width, height);
-  const navy = [14, 31, 105], pink = [244, 37, 157], cream = [255, 239, 206];
-  for (let i = 0; i < labels.length; i++) {
-    const pixel = i * 4, label = labels[i];
-    if (label < 0) { cutout.data[pixel + 3] = 0; continue; }
-    if (label === 12 || label === 13) tintPixel(cutout.data, pixel, navy, .68);
-    if (label >= 14 && label <= 17) tintPixel(cutout.data, pixel, navy, .54);
-    if ((label === 12 || label === 13 || (label >= 14 && label <= 17)) && i % 17 < 2) tintPixel(cutout.data, pixel, pink, .34);
-    if (label === 22 || label === 23) tintPixel(cutout.data, pixel, cream, .32);
+  const face = detectBounds(labels, width, height, label => label === 0 || label === 1);
+  const person = detectBounds(labels, width, height, label => label >= 0);
+  if (person.pixels < width * height * .018) throw new Error('We could not find one clear face. Try a brighter, front-facing photo.');
+  if (face.pixels < Math.max(24, width * height * .00012)) throw new Error('Move closer and use a clear photo where the player’s face is visible.');
+  const sourcePixels = sourceContext.getImageData(0, 0, width, height).data;
+  return {
+    face: makeFaceSprite(image, sourceContext, labels, width, height, face),
+    skin: sampleSkinTone(sourcePixels, labels, width, face),
+  };
+}
+
+function recolorPose(canvas, skin) {
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
+  for (let index = 0; index < pixels.data.length; index += 4) {
+    if (pixels.data[index + 3] < 20) continue;
+    const r = pixels.data[index], g = pixels.data[index + 1], b = pixels.data[index + 2];
+    if (b < 90 || g < 70 || b < r * 1.18 || g < r * 1.16) continue;
+    const light = clamp((g + b) / 440, .28, 1.08);
+    const factor = .48 + light * .62;
+    pixels.data[index] = clamp(Math.round(skin[0] * factor), 0, 255);
+    pixels.data[index + 1] = clamp(Math.round(skin[1] * factor), 0, 255);
+    pixels.data[index + 2] = clamp(Math.round(skin[2] * factor), 0, 255);
   }
-  sourceContext.putImageData(cutout, 0, 0);
+  context.putImageData(pixels, 0, 0);
+}
 
-  const paddingX = Math.max(4, (maxX - minX) * .09), paddingY = Math.max(4, (maxY - minY) * .05);
-  minX = clamp(minX - paddingX, 0, width); maxX = clamp(maxX + paddingX, 0, width);
-  minY = clamp(minY - paddingY, 0, height); maxY = clamp(maxY + paddingY, 0, height);
-  const cropW = maxX - minX, cropH = maxY - minY;
-  const logical = document.createElement('canvas');
-  logical.width = 144; logical.height = 216;
-  const logicalContext = logical.getContext('2d', { willReadFrequently: true });
-  const scale = Math.min(124 / cropW, 196 / cropH);
-  const drawW = cropW * scale, drawH = cropH * scale;
-  const drawX = (logical.width - drawW) / 2, drawY = logical.height - drawH - 8;
-  logicalContext.imageSmoothingEnabled = true;
-  logicalContext.drawImage(source, minX, minY, cropW, cropH, drawX, drawY, drawW, drawH);
-
-  const sprite = logicalContext.getImageData(0, 0, logical.width, logical.height);
-  const original = new Uint8ClampedArray(sprite.data);
-  const bayer = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]];
-  for (let y = 0; y < logical.height; y++) {
-    for (let x = 0; x < logical.width; x++) {
-      const index = (y * logical.width + x) * 4;
-      if (sprite.data[index + 3] < 70) { sprite.data[index + 3] = 0; continue; }
-      const dither = (bayer[y % 4][x % 4] - 7.5) * 1.6;
-      for (let channel = 0; channel < 3; channel++) {
-        sprite.data[index + channel] = clamp(Math.round((sprite.data[index + channel] + dither) / 24) * 24, 0, 255);
+function removeSmallAlphaIslands(canvas) {
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
+  const visited = new Uint8Array(canvas.width * canvas.height);
+  const components = [];
+  for (let start = 0; start < visited.length; start++) {
+    if (visited[start] || pixels.data[start * 4 + 3] < 24) continue;
+    const points = [start];
+    visited[start] = 1;
+    for (let cursor = 0; cursor < points.length; cursor++) {
+      const point = points[cursor], x = point % canvas.width, y = Math.floor(point / canvas.width);
+      const neighbors = [];
+      if (x) neighbors.push(point - 1);
+      if (x < canvas.width - 1) neighbors.push(point + 1);
+      if (y) neighbors.push(point - canvas.width);
+      if (y < canvas.height - 1) neighbors.push(point + canvas.width);
+      for (const next of neighbors) {
+        if (visited[next] || pixels.data[next * 4 + 3] < 24) continue;
+        visited[next] = 1; points.push(next);
       }
-      sprite.data[index + 3] = 255;
     }
+    components.push(points);
   }
-  for (let y = 1; y < logical.height - 1; y++) {
-    for (let x = 1; x < logical.width - 1; x++) {
-      const index = (y * logical.width + x) * 4;
-      if (sprite.data[index + 3] !== 0) continue;
-      let neighbor = false;
-      for (let oy = -1; oy <= 1 && !neighbor; oy++) for (let ox = -1; ox <= 1; ox++) {
-        if (original[((y + oy) * logical.width + x + ox) * 4 + 3] > 120) { neighbor = true; break; }
-      }
-      if (neighbor) { sprite.data[index] = 7; sprite.data[index + 1] = 9; sprite.data[index + 2] = 29; sprite.data[index + 3] = 255; }
-    }
+  const largest = Math.max(0, ...components.map(component => component.length));
+  for (const component of components) {
+    if (component.length >= largest * .045) continue;
+    for (const point of component) pixels.data[point * 4 + 3] = 0;
   }
-  logicalContext.putImageData(sprite, 0, 0);
-  drawPixelBall(logicalContext, logical.width * .18, logical.height * .52, 14);
+  context.putImageData(pixels, 0, 0);
+}
 
-  onStage('UPSIZING WITH ARCADE PIXELS…');
+function alphaBounds(canvas) {
+  const { data } = canvas.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, canvas.width, canvas.height);
+  let minX = canvas.width, minY = canvas.height, maxX = 0, maxY = 0;
+  for (let y = 0; y < canvas.height; y++) for (let x = 0; x < canvas.width; x++) {
+    if (data[(y * canvas.width + x) * 4 + 3] < 20) continue;
+    minX = Math.min(minX, x); minY = Math.min(minY, y); maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
+  }
+  return { x: Math.max(0, minX - 7), y: Math.max(0, minY - 7), width: Math.min(canvas.width - minX + 7, maxX - minX + 15), height: Math.min(canvas.height - minY + 7, maxY - minY + 15) };
+}
+
+async function renderPoseAvatar(identity, poseIndex, onStage = () => {}) {
+  const pose = POSES[poseIndex % POSES.length];
+  onStage(`BUILDING ${pose.name}…`);
+  const [atlas, face] = await Promise.all([getPoseAtlas(), loadImage(identity.face)]);
+  const cell = document.createElement('canvas');
+  cell.width = pose.src[2]; cell.height = pose.src[3];
+  const context = cell.getContext('2d', { willReadFrequently: true });
+  context.drawImage(atlas, ...pose.src, 0, 0, cell.width, cell.height);
+  removeSmallAlphaIslands(cell);
+  recolorPose(cell, identity.skin);
+  context.imageSmoothingEnabled = false;
+  context.save();
+  context.beginPath();
+  context.ellipse(pose.head[0] + pose.head[2] / 2, pose.head[1] + pose.head[3] / 2, pose.head[2] * .52, pose.head[3] * .52, 0, 0, Math.PI * 2);
+  context.clip();
+  context.clearRect(pose.head[0] - 3, pose.head[1] - 3, pose.head[2] + 6, pose.head[3] + 6);
+  context.restore();
+  context.drawImage(face, ...pose.head);
+  const bounds = alphaBounds(cell);
   const output = document.createElement('canvas');
-  output.width = 576; output.height = 864;
+  output.width = 576; output.height = 720;
   const outputContext = output.getContext('2d');
   outputContext.imageSmoothingEnabled = false;
-  outputContext.drawImage(logical, 0, 0, output.width, output.height);
-  return { avatar: output.toDataURL('image/png'), photo, player };
+  const scale = Math.min(540 / bounds.width, 680 / bounds.height);
+  const drawW = Math.round(bounds.width * scale), drawH = Math.round(bounds.height * scale);
+  outputContext.drawImage(cell, bounds.x, bounds.y, bounds.width, bounds.height, Math.round((output.width - drawW) / 2), output.height - drawH - 18, drawW, drawH);
+  return output.toDataURL('image/png');
+}
+
+async function forgeArcadeAvatar(photo, player, poseIndex, onStage = () => {}) {
+  const identity = await extractPlayerIdentity(photo, onStage);
+  const avatar = await renderPoseAvatar(identity, poseIndex, onStage);
+  return { avatar, identity, photo, player };
 }
 
 function Logo({ small = false }) {
@@ -297,6 +406,8 @@ function PlayerModal({ player, onClose }) {
 function Registration({ onClose, onCreate }) {
   const [form, setForm] = useState({ realName: '', alias: '', number: '', city: '', position: 'PG', guardian: '' });
   const [avatar, setAvatar] = useState('');
+  const [identity, setIdentity] = useState(null);
+  const [poseIndex, setPoseIndex] = useState(0);
   const [sourcePhoto, setSourcePhoto] = useState('');
   const [forgeStatus, setForgeStatus] = useState('');
   const [forgeError, setForgeError] = useState('');
@@ -305,15 +416,29 @@ function Registration({ onClose, onCreate }) {
   const update = (e) => setForm({ ...form, [e.target.name]: e.target.value });
   const handlePhoto = async (file) => {
     setAvatar('');
+    setIdentity(null);
     setForgeError('');
     setForgeStatus('SCOUTING YOUR LOOK…');
     try {
       const prepared = await preparePhoto(file);
       setSourcePhoto(prepared);
-      setForgeStatus('BUILDING YOUR GAME SPRITE…');
-      const result = await forgeArcadeAvatar(prepared, form, setForgeStatus);
+      const result = await forgeArcadeAvatar(prepared, form, poseIndex, setForgeStatus);
+      setIdentity(result.identity);
       setAvatar(result.avatar);
-      setForgeStatus('PLAYER RENDER COMPLETE');
+      setForgeStatus('');
+    } catch (error) {
+      setForgeStatus('');
+      setForgeError(error.message);
+    }
+  };
+  const choosePose = async (nextPose) => {
+    setPoseIndex(nextPose);
+    if (!identity) return;
+    setForgeError('');
+    setForgeStatus(`LOADING POSE ${String(nextPose + 1).padStart(2, '0')}…`);
+    try {
+      setAvatar(await renderPoseAvatar(identity, nextPose, setForgeStatus));
+      setForgeStatus('');
     } catch (error) {
       setForgeStatus('');
       setForgeError(error.message);
@@ -326,7 +451,7 @@ function Registration({ onClose, onCreate }) {
     onCreate({
       id: `local-${Date.now()}`, ...form, alias: form.alias.toUpperCase(),
       stats: { pts: 0, ast: 0, reb: 0, stl: 0, blk: 0 }, wins: 0, heat: 70,
-      tagline: 'Rookie mode: OFF.', power: 'TO BE UNLOCKED', avatar,
+      tagline: 'Rookie mode: OFF.', power: 'TO BE UNLOCKED', avatar, pose: POSES[poseIndex].id,
     });
   };
   return (
@@ -349,7 +474,7 @@ function Registration({ onClose, onCreate }) {
           </div>
         </> : <>
           <h2>PIXEL MODE:<br/><em>ACTIVATED</em></h2>
-          <p className="form-intro">Upload one clear, full-body photo with the player’s face and shoes visible. The free on-device forge cuts them out and rebuilds the photo as a digitized arcade-game sprite.</p>
+          <p className="form-intro">A clear headshot is enough. The free on-device forge keeps the player’s real facial features, reads their skin tone, and builds a complete digitized arcade player from 12 full-body poses.</p>
           <div className="photo-step">
             <label className={`upload-zone ${forgeStatus && !avatar ? 'forging' : ''}`}>
               {avatar ? <PixelAvatar player={generated} /> : sourcePhoto ? <img className="source-photo" src={sourcePhoto} alt="Uploaded player awaiting arcade conversion" /> : <><span className="upload-icon">＋</span><b>DROP YOUR PLAYER PHOTO</b><small>JPG, PNG, or WEBP · 10 MB max</small></>}
@@ -357,6 +482,10 @@ function Registration({ onClose, onCreate }) {
               <input disabled={Boolean(forgeStatus && !avatar)} required={!avatar} type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => e.target.files?.[0] && handlePhoto(e.target.files[0])} />
             </label>
             <div className="mini-card"><span>PLAYER PREVIEW</span><h3>{generated.alias.toUpperCase()}</h3><b>#{generated.number}</b><p>{generated.position} · {generated.city || 'HOMETOWN'}</p></div>
+          </div>
+          <div className="pose-picker">
+            <div><span>CHOOSE A FULL-BODY POSE</span><b>{String(poseIndex + 1).padStart(2, '0')} / {POSES.length} · {POSES[poseIndex].name}</b></div>
+            <div className="pose-options">{POSES.map((pose, index) => <button aria-label={`Choose ${pose.name} pose`} title={pose.name} className={poseIndex === index ? 'active' : ''} type="button" key={pose.id} onClick={() => choosePose(index)}>{String(index + 1).padStart(2, '0')}</button>)}</div>
           </div>
           {forgeError && <div className="forge-error">⚠ {forgeError}</div>}
           <p className="privacy-note">100% FREE + PRIVATE: The conversion runs on this device. The original photo never leaves the browser and there are no API or generation fees.</p>

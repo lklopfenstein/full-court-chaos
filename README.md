@@ -20,7 +20,7 @@ npm run build
 - Responsive league landing page and tour presentation
 - Arcade player cards and full player-select profile views
 - Two-step guardian-led player registration
-- Free on-device photo-to-sprite conversion using browser-based person segmentation, uniform tinting, background removal, posterization, dithering, hard outlining, and nearest-neighbor scaling
+- Free on-device headshot-to-sprite conversion that preserves facial features, samples skin tone, pixelizes the face, and composites it onto a selectable library of 12 full-body arcade basketball poses
 - Scorekeeper console with live leaderboard updates
 - Local browser persistence for created players and stat changes
 
