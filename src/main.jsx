@@ -299,11 +299,11 @@ function makePixelFaceSprite(landmarkFace, image, skin, hair, bodyFace) {
   // hand-drawn arcade portrait than a shrunken photo: the uploaded image sets
   // palette and broad feature placement, but the final pixels use the same
   // chunky body-art language as the pose atlas.
-  fillPolygon(context, outline, [[16,45],[28,45],[32,62],[12,62]]);
-  fillPolygon(context, skinShadow, [[17,45],[28,45],[31,62],[13,62]]);
-  fillPolygon(context, skinBase, [[18,45],[26,45],[29,62],[15,62]]);
-  context.fillStyle = skinLight; context.fillRect(19, 47, 3, 12);
-  context.fillStyle = skinDeep; context.fillRect(27, 49, 2, 11);
+  fillPolygon(context, outline, [[15,44],[29,44],[35,62],[9,62]]);
+  fillPolygon(context, skinShadow, [[16,44],[29,44],[34,62],[10,62]]);
+  fillPolygon(context, skinBase, [[17,44],[27,44],[32,62],[12,62]]);
+  context.fillStyle = skinLight; context.fillRect(18, 47, 4, 12);
+  context.fillStyle = skinDeep; context.fillRect(28, 49, 2, 11);
 
   fillPolygon(context, outline, [[13,5],[31,5],[37,10],[40,24],[39,36],[35,49],[28,56],[16,56],[9,49],[5,36],[4,24],[7,10]]);
   context.fillStyle = outline; context.fillRect(3, 24, 5, 11); context.fillRect(36, 24, 5, 11);
@@ -502,19 +502,21 @@ async function renderPoseAvatar(identity, poseIndex, onStage = () => {}) {
   context.imageSmoothingEnabled = false;
   const [slotX, slotY, slotWidth, slotHeight] = pose.head;
   const faceAspect = 44 / 62;
-  let headWidth = slotWidth * .96;
+  let headWidth = slotWidth * 1.14;
   let headHeight = headWidth / faceAspect;
-  if (headHeight > slotHeight * .99) {
-    headHeight = slotHeight * .99;
+  if (headHeight > slotHeight * 1.12) {
+    headHeight = slotHeight * 1.12;
     headWidth = headHeight * faceAspect;
   }
   const headX = slotX + (slotWidth - headWidth) / 2;
-  const headY = slotY + slotHeight - headHeight;
+  const headY = slotY + slotHeight - headHeight + slotHeight * .035;
+  const clearPadX = Math.max(5, slotWidth * .18);
+  const clearPadY = Math.max(6, slotHeight * .14);
   context.save();
   context.beginPath();
-  context.ellipse(slotX + slotWidth / 2, slotY + slotHeight / 2, slotWidth * .54, slotHeight * .53, 0, 0, Math.PI * 2);
+  context.ellipse(slotX + slotWidth / 2, slotY + slotHeight / 2, slotWidth * .66, slotHeight * .62, 0, 0, Math.PI * 2);
   context.clip();
-  context.clearRect(slotX - 4, slotY - 4, slotWidth + 8, slotHeight + 8);
+  context.clearRect(slotX - clearPadX, slotY - clearPadY, slotWidth + clearPadX * 2, slotHeight + clearPadY * 2);
   context.restore();
   context.drawImage(face, headX, headY, headWidth, headHeight);
   const bounds = alphaBounds(cell);
