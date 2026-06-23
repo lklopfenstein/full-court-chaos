@@ -111,18 +111,18 @@ function preparePhoto(file) {
 }
 
 const POSES = [
-  { id: 'ready', name: 'READY STANCE', src: [90, 20, 235, 292], head: [90, 5, 47, 59] },
-  { id: 'dribble-left', name: 'LEFT DRIBBLE', src: [455, 35, 260, 280], head: [126, 9, 44, 74] },
-  { id: 'dribble-right', name: 'RIGHT DRIBBLE', src: [830, 40, 255, 280], head: [104, 9, 44, 73] },
-  { id: 'crossover', name: 'LOW CROSSOVER', src: [1150, 55, 310, 275], head: [155, 12, 45, 73] },
-  { id: 'jump-shot', name: 'JUMP SHOT', src: [115, 316, 190, 330], head: [70, 52, 55, 70] },
-  { id: 'one-hand-dunk', name: 'ONE-HAND DUNK', src: [445, 305, 285, 355], head: [93, 59, 54, 70] },
-  { id: 'two-hand-dunk', name: 'TWO-HAND DUNK', src: [830, 310, 220, 340], head: [72, 69, 52, 71] },
-  { id: 'layup', name: 'RUNNING LAYUP', src: [1155, 310, 310, 355], head: [105, 58, 56, 69] },
-  { id: 'defense', name: 'LOCKDOWN D', src: [70, 680, 260, 300], head: [108, 31, 56, 76] },
-  { id: 'crowd', name: 'CROWD ROAR', src: [440, 635, 255, 350], head: [78, 44, 56, 68] },
-  { id: 'point', name: 'CALL YOUR SHOT', src: [805, 640, 245, 345], head: [64, 31, 57, 67] },
-  { id: 'flex', name: 'FLEX MODE', src: [1175, 640, 225, 345], head: [80, 30, 57, 66] },
+  { id: 'ready', name: 'READY STANCE', src: [90, 20, 235, 292], head: [90, 5, 47, 59], fit: { scale: 1.12, maxScale: 1.12, y: .07, clearCy: .39, clearRy: .52, neckBottom: .99 } },
+  { id: 'dribble-left', name: 'LEFT DRIBBLE', src: [455, 35, 260, 280], head: [126, 9, 44, 74], fit: { scale: 1.06, maxScale: 1.08, x: .01, y: .12, clearCy: .35, clearRy: .47, neckBottom: .96 } },
+  { id: 'dribble-right', name: 'RIGHT DRIBBLE', src: [830, 40, 255, 280], head: [104, 9, 44, 73], fit: { scale: 1.08, maxScale: 1.1, x: -.01, y: .1, clearCy: .35, clearRy: .48, neckBottom: .97 } },
+  { id: 'crossover', name: 'LOW CROSSOVER', src: [1150, 55, 310, 275], head: [155, 12, 45, 73], fit: { scale: 1.04, maxScale: 1.08, y: .12, clearCy: .35, clearRy: .47, neckBottom: .96 } },
+  { id: 'jump-shot', name: 'JUMP SHOT', src: [115, 316, 190, 330], head: [70, 52, 55, 70], fit: { scale: 1.08, maxScale: 1.1, y: .09, clearCy: .38, clearRy: .5, neckBottom: .98 } },
+  { id: 'one-hand-dunk', name: 'ONE-HAND DUNK', src: [445, 305, 285, 355], head: [93, 59, 54, 70], fit: { scale: 1.02, maxScale: 1.05, x: -.01, y: .1, clearCy: .36, clearRy: .48, neckBottom: .97 } },
+  { id: 'two-hand-dunk', name: 'TWO-HAND DUNK', src: [830, 310, 220, 340], head: [72, 69, 52, 71], fit: { scale: 1, maxScale: 1.04, y: .1, clearCy: .36, clearRy: .48, neckBottom: .97 } },
+  { id: 'layup', name: 'RUNNING LAYUP', src: [1155, 310, 310, 355], head: [105, 58, 56, 69], fit: { scale: 1.04, maxScale: 1.08, x: .01, y: .1, clearCy: .36, clearRy: .49, neckBottom: .97 } },
+  { id: 'defense', name: 'LOCKDOWN D', src: [70, 680, 260, 300], head: [108, 31, 56, 76], fit: { scale: 1.04, maxScale: 1.07, y: .12, clearCy: .34, clearRy: .47, neckBottom: .96 } },
+  { id: 'crowd', name: 'CROWD ROAR', src: [440, 635, 255, 350], head: [78, 44, 56, 68], fit: { scale: 1.08, maxScale: 1.1, y: .08, clearCy: .38, clearRy: .5, neckBottom: .98 } },
+  { id: 'point', name: 'CALL YOUR SHOT', src: [805, 640, 245, 345], head: [64, 31, 57, 67], fit: { scale: 1.06, maxScale: 1.08, x: -.01, y: .09, clearCy: .38, clearRy: .5, neckBottom: .98 } },
+  { id: 'flex', name: 'FLEX MODE', src: [1175, 640, 225, 345], head: [80, 30, 57, 66], fit: { scale: 1.08, maxScale: 1.1, y: .09, clearCy: .38, clearRy: .5, neckBottom: .98 } },
 ];
 
 let bodyPixModelPromise;
@@ -501,21 +501,22 @@ async function renderPoseAvatar(identity, poseIndex, onStage = () => {}) {
   recolorPose(cell, identity.skin);
   context.imageSmoothingEnabled = false;
   const [slotX, slotY, slotWidth, slotHeight] = pose.head;
+  const fit = { scale: 1.18, maxScale: 1.18, x: 0, y: .055, clearX: .18, clearY: .14, clearCy: .43, clearRx: .68, clearRy: .57, neckTop: .68, neckBottom: 1.03, ...pose.fit };
   const faceAspect = 44 / 62;
-  let headWidth = slotWidth * 1.18;
+  let headWidth = slotWidth * fit.scale;
   let headHeight = headWidth / faceAspect;
-  if (headHeight > slotHeight * 1.18) {
-    headHeight = slotHeight * 1.18;
+  if (headHeight > slotHeight * fit.maxScale) {
+    headHeight = slotHeight * fit.maxScale;
     headWidth = headHeight * faceAspect;
   }
-  const headX = slotX + (slotWidth - headWidth) / 2;
-  const headY = slotY + slotHeight - headHeight + slotHeight * .055;
-  const clearPadX = Math.max(5, slotWidth * .18);
-  const clearPadY = Math.max(6, slotHeight * .14);
-  const clearCenterY = slotY + slotHeight * .43;
+  const headX = slotX + (slotWidth - headWidth) / 2 + slotWidth * fit.x;
+  const headY = slotY + slotHeight - headHeight + slotHeight * fit.y;
+  const clearPadX = Math.max(5, slotWidth * fit.clearX);
+  const clearPadY = Math.max(6, slotHeight * fit.clearY);
+  const clearCenterY = slotY + slotHeight * fit.clearCy;
   context.save();
   context.beginPath();
-  context.ellipse(slotX + slotWidth / 2, clearCenterY, slotWidth * .68, slotHeight * .57, 0, 0, Math.PI * 2);
+  context.ellipse(slotX + slotWidth / 2, clearCenterY, slotWidth * fit.clearRx, slotHeight * fit.clearRy, 0, 0, Math.PI * 2);
   context.clip();
   context.clearRect(slotX - clearPadX, slotY - clearPadY, slotWidth + clearPadX * 2, slotHeight + clearPadY * 2);
   context.restore();
@@ -524,16 +525,16 @@ async function renderPoseAvatar(identity, poseIndex, onStage = () => {}) {
   context.globalCompositeOperation = 'destination-over';
   const neckSkin = mixColor(identity.skin, [210, 139, 92], .08);
   fillPolygon(context, colorCss(neckSkin), [
-    [headX + headWidth * .34, headY + headHeight * .68],
-    [headX + headWidth * .66, headY + headHeight * .68],
-    [headX + headWidth * .82, headY + headHeight * 1.03],
-    [headX + headWidth * .18, headY + headHeight * 1.03],
+    [headX + headWidth * .34, headY + headHeight * fit.neckTop],
+    [headX + headWidth * .66, headY + headHeight * fit.neckTop],
+    [headX + headWidth * .82, headY + headHeight * fit.neckBottom],
+    [headX + headWidth * .18, headY + headHeight * fit.neckBottom],
   ]);
   fillPolygon(context, colorCss(shadeColor(neckSkin, .76)), [
-    [headX + headWidth * .62, headY + headHeight * .7],
-    [headX + headWidth * .73, headY + headHeight * 1.01],
-    [headX + headWidth * .82, headY + headHeight * 1.03],
-    [headX + headWidth * .66, headY + headHeight * .68],
+    [headX + headWidth * .62, headY + headHeight * (fit.neckTop + .02)],
+    [headX + headWidth * .73, headY + headHeight * (fit.neckBottom - .02)],
+    [headX + headWidth * .82, headY + headHeight * fit.neckBottom],
+    [headX + headWidth * .66, headY + headHeight * fit.neckTop],
   ]);
   context.restore();
   const bounds = alphaBounds(cell);
