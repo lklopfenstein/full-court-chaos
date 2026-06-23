@@ -234,6 +234,14 @@ function shadeColor(color, factor) {
   return color.map(value => value * factor);
 }
 
+function mixColor(first, second, amount) {
+  return first.map((value, index) => value * (1 - amount) + second[index] * amount);
+}
+
+function colorLuma(color) {
+  return color[0] * .3 + color[1] * .59 + color[2] * .11;
+}
+
 function fillPolygon(context, color, points) {
   context.fillStyle = color;
   context.beginPath();
@@ -260,87 +268,136 @@ function makePixelFaceSprite(landmarkFace, image, skin, hair, bodyFace) {
   const mouthRight = safePoint(291, { x: box.xMin + box.width * .6, y: box.yMin + box.height * .76 });
   const mouthCenter = averagePoint(safePoint(13, mouthLeft), safePoint(14, mouthRight));
   const forehead = safePoint(10, { x: box.xMin + box.width * .5, y: box.yMin + box.height * .14 });
-  const mapX = point => clamp(Math.round(2 + ((point.x - box.xMin) / box.width) * 16), 3, 17);
-  const mapY = point => clamp(Math.round(2 + ((point.y - box.yMin) / box.height) * 21), 3, 23);
-  const eyeY = clamp(Math.round((mapY(orderedEyes[0]) + mapY(orderedEyes[1])) / 2), 9, 13);
-  const eyeX = [clamp(mapX(orderedEyes[0]), 6, 9), clamp(mapX(orderedEyes[1]), 11, 14)];
-  const noseX = clamp(mapX(nose), 9, 11);
-  const noseY = clamp(mapY(nose), eyeY + 2, 18);
-  const mouthY = clamp(mapY(mouthCenter), noseY + 2, 21);
-  const mouthWidth = clamp(Math.round(Math.abs(mapX(mouthRight) - mapX(mouthLeft))), 3, 5);
-  const hairDepth = clamp(Math.round(4 + ((forehead.y - bodyFace.minY) / Math.max(1, bodyFace.height)) * 5), 4, 8);
+  const mapX = point => clamp(Math.round(7 + ((point.x - box.xMin) / box.width) * 30), 8, 36);
+  const mapY = point => clamp(Math.round(9 + ((point.y - box.yMin) / box.height) * 42), 10, 52);
+  const eyeY = clamp(Math.round((mapY(orderedEyes[0]) + mapY(orderedEyes[1])) / 2), 23, 29);
+  const eyeX = [clamp(mapX(orderedEyes[0]), 14, 19), clamp(mapX(orderedEyes[1]), 25, 30)];
+  const noseX = clamp(mapX(nose), 20, 24);
+  const noseY = clamp(mapY(nose), eyeY + 5, 38);
+  const mouthY = clamp(mapY(mouthCenter), noseY + 5, 47);
+  const mouthWidth = clamp(Math.round(Math.abs(mapX(mouthRight) - mapX(mouthLeft)) * .72), 5, 9);
+  const hairDepth = clamp(Math.round(10 + ((forehead.y - bodyFace.minY) / Math.max(1, bodyFace.height)) * 7), 10, 15);
   const sprite = document.createElement('canvas');
-  sprite.width = 20; sprite.height = 30;
+  sprite.width = 44; sprite.height = 62;
   const context = sprite.getContext('2d');
   const outline = '#07091d';
-  const skinDeep = colorCss(shadeColor(skin, .5));
-  const skinShadow = colorCss(shadeColor(skin, .72));
-  const skinBase = colorCss(skin);
-  const skinLight = colorCss(shadeColor(skin, 1.13));
-  const skinBright = colorCss(shadeColor(skin, 1.28));
-  const hairShadow = colorCss(shadeColor(hair, .55));
-  const hairBase = colorCss(hair);
-  const hairLight = colorCss(shadeColor(hair, 1.35));
+  const warmedSkin = mixColor(skin, [210, 139, 92], .08);
+  const cleanHair = colorLuma(hair) < 32 ? mixColor(hair, [58, 42, 35], .38) : hair;
+  const skinDeep = colorCss(shadeColor(warmedSkin, .58));
+  const skinShadow = colorCss(shadeColor(warmedSkin, .78));
+  const skinBase = colorCss(warmedSkin);
+  const skinLight = colorCss(shadeColor(warmedSkin, 1.12));
+  const skinBright = colorCss(mixColor(shadeColor(warmedSkin, 1.22), [255, 236, 198], .12));
+  const hairShadow = colorCss(shadeColor(cleanHair, .5));
+  const hairBase = colorCss(cleanHair);
+  const hairLight = colorCss(shadeColor(cleanHair, 1.45));
+  const beardTone = colorCss(mixColor(shadeColor(warmedSkin, .72), cleanHair, .28));
 
-  // Build the neck into the same low-resolution sprite as the head. It sits
-  // behind the jaw and flares into the jersey opening, so every pose receives
-  // one continuous head-and-neck asset instead of two independently placed
-  // shapes that can separate at different aspect ratios.
-  fillPolygon(context, skinBase, [[7,20],[13,20],[14,30],[6,30]]);
-  fillPolygon(context, skinShadow, [[12,20],[13,20],[14,30],[12,30]]);
+  const faceFill = [[13,7],[31,7],[35,11],[38,24],[37,36],[33,47],[27,53],[17,53],[11,47],[7,36],[6,24],[9,11]];
 
-  fillPolygon(context, outline, [[6,0],[14,0],[17,2],[19,8],[18,18],[15,22],[12,24],[8,24],[5,22],[2,18],[1,8],[3,2]]);
-  fillPolygon(context, skinBase, [[6,1],[14,1],[17,3],[18,8],[17,17],[15,21],[12,23],[8,23],[5,21],[3,17],[2,8],[4,3]]);
-  context.fillStyle = outline; context.fillRect(0, 10, 3, 6); context.fillRect(17, 10, 3, 6);
-  context.fillStyle = skinBase; context.fillRect(1, 11, 2, 4); context.fillRect(17, 11, 2, 4);
+  // One compact, native sprite asset. This is intentionally more like a
+  // hand-drawn arcade portrait than a shrunken photo: the uploaded image sets
+  // palette and broad feature placement, but the final pixels use the same
+  // chunky body-art language as the pose atlas.
+  fillPolygon(context, outline, [[16,45],[28,45],[32,62],[12,62]]);
+  fillPolygon(context, skinShadow, [[17,45],[28,45],[31,62],[13,62]]);
+  fillPolygon(context, skinBase, [[18,45],[26,45],[29,62],[15,62]]);
+  context.fillStyle = skinLight; context.fillRect(19, 47, 3, 12);
+  context.fillStyle = skinDeep; context.fillRect(27, 49, 2, 11);
 
-  // The photograph contributes only light and shadow. Every visible face color
-  // comes from the exact same skin palette used on the body, which removes the
-  // pasted-on-photo seam while retaining recognizable facial structure.
+  fillPolygon(context, outline, [[13,5],[31,5],[37,10],[40,24],[39,36],[35,49],[28,56],[16,56],[9,49],[5,36],[4,24],[7,10]]);
+  context.fillStyle = outline; context.fillRect(3, 24, 5, 11); context.fillRect(36, 24, 5, 11);
+  context.fillStyle = skinShadow; context.fillRect(4, 25, 4, 9); context.fillRect(36, 25, 4, 9);
+  context.fillStyle = skinBase; context.fillRect(5, 26, 3, 7); context.fillRect(36, 26, 3, 7);
+  fillPolygon(context, skinBase, faceFill);
+
+  // Photo light only gets a low-opacity pass, so recognizable shadows survive
+  // without turning the head into a pasted miniature photograph.
   const texture = document.createElement('canvas');
-  texture.width = 14; texture.height = 19;
+  texture.width = 31; texture.height = 42;
   const textureContext = texture.getContext('2d', { willReadFrequently: true });
   textureContext.imageSmoothingEnabled = true;
-  textureContext.drawImage(image, box.xMin, box.yMin, box.width, box.height, 0, 0, texture.width, texture.height);
+  const cropX = Math.max(0, box.xMin - box.width * .04);
+  const cropY = Math.max(0, box.yMin + box.height * .02);
+  textureContext.drawImage(
+    image,
+    cropX,
+    cropY,
+    Math.max(1, Math.min(image.width - cropX, box.width * 1.08)),
+    Math.max(1, Math.min(image.height - cropY, box.height * .92)),
+    0,
+    0,
+    texture.width,
+    texture.height,
+  );
   const texturePixels = textureContext.getImageData(0, 0, texture.width, texture.height).data;
-  const skinLuma = Math.max(24, skin[0] * .3 + skin[1] * .59 + skin[2] * .11);
+  const skinLuma = Math.max(24, colorLuma(skin));
+  let lowerDark = 0, lowerSamples = 0;
+  for (let y = Math.floor(texture.height * .55); y < texture.height; y++) for (let x = 0; x < texture.width; x++) {
+    const index = (y * texture.width + x) * 4;
+    const luma = texturePixels[index] * .3 + texturePixels[index + 1] * .59 + texturePixels[index + 2] * .11;
+    lowerSamples++;
+    if (luma < skinLuma * .66) lowerDark++;
+  }
+  const hasFacialHair = lowerDark / Math.max(1, lowerSamples) > .18;
   context.save();
-  context.beginPath(); context.ellipse(10, 13, 7.5, 10.8, 0, 0, Math.PI * 2); context.clip();
+  context.globalAlpha = .48;
+  context.beginPath();
+  faceFill.forEach(([x, y], index) => index ? context.lineTo(x, y) : context.moveTo(x, y));
+  context.closePath(); context.clip();
   for (let y = 0; y < texture.height; y++) for (let x = 0; x < texture.width; x++) {
     const index = (y * texture.width + x) * 4;
     const luma = texturePixels[index] * .3 + texturePixels[index + 1] * .59 + texturePixels[index + 2] * .11;
     const relativeLight = luma / skinLuma;
-    context.fillStyle = relativeLight < .58 ? skinDeep : relativeLight < .82 ? skinShadow : relativeLight < 1.08 ? skinBase : relativeLight < 1.28 ? skinLight : skinBright;
-    context.fillRect(x + 3, y + 3, 1, 1);
+    context.fillStyle = relativeLight < .62 ? skinDeep : relativeLight < .84 ? skinShadow : relativeLight < 1.1 ? skinBase : relativeLight < 1.34 ? skinLight : skinBright;
+    context.fillRect(x + 7, y + 10, 1, 1);
   }
   context.restore();
 
-  fillPolygon(context, hairShadow, [[4,3],[5,1],[7,0],[14,0],[17,2],[18,5],[17,hairDepth + 1],[15,hairDepth],[13,hairDepth + 1],[10,hairDepth],[8,hairDepth + 1],[5,hairDepth],[3,hairDepth + 1],[3,5]]);
-  fillPolygon(context, hairBase, [[5,2],[7,1],[14,1],[16,2],[17,4],[16,hairDepth],[14,hairDepth - 1],[12,hairDepth],[10,hairDepth - 1],[8,hairDepth],[6,hairDepth - 1],[4,hairDepth],[4,4]]);
+  fillPolygon(context, skinShadow, [[9,36],[13,48],[18,54],[14,53],[9,48],[6,37]]);
+  fillPolygon(context, skinLight, [[29,13],[35,22],[36,31],[34,29],[31,18]]);
+  context.fillStyle = skinDeep; context.fillRect(17, 52, 10, 1);
+  context.fillStyle = skinShadow; context.fillRect(13, 45, 4, 2); context.fillRect(27, 45, 4, 2);
+
+  if (hasFacialHair) {
+    context.globalAlpha = .52;
+    fillPolygon(context, beardTone, [[12,38],[18,41],[26,41],[32,38],[31,48],[27,53],[17,53],[13,48]]);
+    context.globalAlpha = 1;
+  }
+
+  fillPolygon(context, hairShadow, [[8,12],[10,6],[15,2],[26,1],[34,4],[39,10],[40,17],[36,16],[34,hairDepth],[30,hairDepth + 1],[26,hairDepth],[22,hairDepth + 1],[18,hairDepth],[14,hairDepth + 1],[10,hairDepth],[7,17]]);
+  fillPolygon(context, hairBase, [[10,11],[12,7],[16,4],[26,3],[32,5],[36,10],[37,14],[33,13],[30,hairDepth - 1],[26,hairDepth],[22,hairDepth - 1],[18,hairDepth],[14,hairDepth - 1],[10,14]]);
   context.fillStyle = hairLight;
-  context.fillRect(7, 2, 3, 1); context.fillRect(12, 2, 2, 1);
+  context.fillRect(16, 5, 5, 1); context.fillRect(25, 5, 4, 1); context.fillRect(12, 10, 2, 1);
+  context.fillStyle = hairShadow;
+  for (let x = 12; x <= 34; x += 4) context.fillRect(x, hairDepth + ((x / 4) % 2 ? 0 : -1), 3, 1);
 
   context.fillStyle = hairShadow;
-  context.fillRect(eyeX[0] - 1, eyeY - 2, 3, 1); context.fillRect(eyeX[1] - 1, eyeY - 2, 3, 1);
-  context.fillStyle = '#f3e6cf';
-  context.fillRect(eyeX[0] - 1, eyeY, 2, 1); context.fillRect(eyeX[1] - 1, eyeY, 2, 1);
+  context.fillRect(eyeX[0] - 3, eyeY - 3, 7, 1); context.fillRect(eyeX[1] - 3, eyeY - 3, 7, 1);
+  context.fillStyle = skinBright;
+  context.fillRect(eyeX[0] - 2, eyeY, 3, 1); context.fillRect(eyeX[1] - 2, eyeY, 3, 1);
   context.fillStyle = outline;
-  context.fillRect(eyeX[0], eyeY, 1, 1); context.fillRect(eyeX[1], eyeY, 1, 1);
+  context.fillRect(eyeX[0], eyeY, 2, 2); context.fillRect(eyeX[1], eyeY, 2, 2);
   context.fillStyle = skinShadow;
-  context.fillRect(noseX + 1, eyeY + 2, 1, Math.max(1, noseY - eyeY - 1));
-  context.fillRect(noseX, noseY, 2, 1);
+  context.fillRect(eyeX[0] - 3, eyeY + 2, 6, 1); context.fillRect(eyeX[1] - 3, eyeY + 2, 6, 1);
+
+  context.fillStyle = skinShadow;
+  context.fillRect(noseX + 1, eyeY + 4, 1, Math.max(2, noseY - eyeY - 3));
+  context.fillRect(noseX - 1, noseY, 4, 1);
   context.fillStyle = skinLight;
-  context.fillRect(noseX, eyeY + 2, 1, Math.max(1, noseY - eyeY - 2));
+  context.fillRect(noseX - 1, eyeY + 5, 1, Math.max(2, noseY - eyeY - 5));
   context.fillStyle = skinDeep;
-  context.fillRect(Math.round(10 - mouthWidth / 2), mouthY, mouthWidth, 1);
+  context.fillRect(Math.round(22 - mouthWidth / 2), mouthY, mouthWidth, 1);
   context.fillStyle = skinLight;
-  context.fillRect(7, eyeY + 4, 1, 1); context.fillRect(13, eyeY + 4, 1, 1);
+  context.fillRect(Math.round(22 - mouthWidth / 2) + 2, mouthY + 1, Math.max(2, mouthWidth - 4), 1);
+  context.fillStyle = skinLight;
+  context.fillRect(13, eyeY + 7, 2, 1); context.fillRect(30, eyeY + 7, 2, 1);
 
   const canvas = document.createElement('canvas');
-  canvas.width = 40; canvas.height = 60;
+  canvas.width = 44; canvas.height = 62;
   const output = canvas.getContext('2d');
   output.imageSmoothingEnabled = false;
-  output.drawImage(sprite, 0, 0, canvas.width, canvas.height);
+  output.drawImage(sprite, 0, 0);
   return canvas.toDataURL('image/png');
 }
 
@@ -444,11 +501,11 @@ async function renderPoseAvatar(identity, poseIndex, onStage = () => {}) {
   recolorPose(cell, identity.skin);
   context.imageSmoothingEnabled = false;
   const [slotX, slotY, slotWidth, slotHeight] = pose.head;
-  const faceAspect = 40 / 60;
-  let headWidth = slotWidth * .9;
+  const faceAspect = 44 / 62;
+  let headWidth = slotWidth * .96;
   let headHeight = headWidth / faceAspect;
-  if (headHeight > slotHeight * .98) {
-    headHeight = slotHeight * .98;
+  if (headHeight > slotHeight * .99) {
+    headHeight = slotHeight * .99;
     headWidth = headHeight * faceAspect;
   }
   const headX = slotX + (slotWidth - headWidth) / 2;
@@ -460,18 +517,6 @@ async function renderPoseAvatar(identity, poseIndex, onStage = () => {}) {
   context.clearRect(slotX - 4, slotY - 4, slotWidth + 8, slotHeight + 8);
   context.restore();
   context.drawImage(face, headX, headY, headWidth, headHeight);
-  context.save();
-  context.fillStyle = `rgb(${identity.skin.join(',')})`;
-  context.beginPath();
-  context.moveTo(headX + headWidth * .41, headY + headHeight * .68);
-  context.lineTo(headX + headWidth * .59, headY + headHeight * .68);
-  context.lineTo(slotX + slotWidth * .62, slotY + slotHeight * .97);
-  context.lineTo(slotX + slotWidth * .38, slotY + slotHeight * .97);
-  context.closePath();
-  context.fill();
-  context.fillStyle = `rgb(${shadeColor(identity.skin, .72).map(value => Math.round(clamp(value, 0, 255))).join(',')})`;
-  context.fillRect(Math.round(headX + headWidth * .58), Math.round(headY + headHeight * .71), Math.max(1, Math.round(headWidth * .06)), Math.max(2, Math.round(headHeight * .2)));
-  context.restore();
   const bounds = alphaBounds(cell);
   const output = document.createElement('canvas');
   output.width = 576; output.height = 720;
