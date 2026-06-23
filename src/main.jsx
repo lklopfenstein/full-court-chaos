@@ -112,16 +112,16 @@ function preparePhoto(file) {
 
 const POSES = [
   { id: 'ready', name: 'READY STANCE', src: [90, 20, 235, 292], head: [90, 5, 47, 59], fit: { scale: 1.1, maxScale: 1.1, y: .08, clearCy: .38, clearRx: .55, clearRy: .42 } },
-  { id: 'dribble-left', name: 'LEFT DRIBBLE', src: [455, 35, 260, 280], head: [126, 9, 44, 74], fit: { scale: 1.03, maxScale: 1.05, x: .01, y: .13, clearCy: .32, clearRx: .48, clearRy: .36 } },
-  { id: 'dribble-right', name: 'RIGHT DRIBBLE', src: [830, 40, 255, 280], head: [104, 9, 44, 73], fit: { scale: 1.04, maxScale: 1.06, x: -.01, y: .12, clearCy: .32, clearRx: .49, clearRy: .37 } },
-  { id: 'crossover', name: 'LOW CROSSOVER', src: [1150, 55, 310, 275], head: [155, 12, 45, 73], fit: { scale: 1.01, maxScale: 1.04, y: .13, clearCy: .32, clearRx: .47, clearRy: .36 } },
-  { id: 'jump-shot', name: 'JUMP SHOT', src: [115, 316, 190, 330], head: [70, 52, 55, 70], fit: { scale: .9, maxScale: .94, y: .17, clearX: .08, clearY: .08, clearCy: .42, clearRx: .38, clearRy: .3, faceCrop: .88 } },
-  { id: 'one-hand-dunk', name: 'ONE-HAND DUNK', src: [445, 305, 285, 355], head: [93, 59, 54, 70], fit: { scale: .9, maxScale: .94, x: -.02, y: .15, clearX: .08, clearY: .08, clearCy: .41, clearRx: .38, clearRy: .31, faceCrop: .88 } },
-  { id: 'two-hand-dunk', name: 'TWO-HAND DUNK', src: [830, 310, 220, 340], head: [72, 69, 52, 71], fit: { scale: .88, maxScale: .93, y: .16, clearX: .08, clearY: .08, clearCy: .41, clearRx: .37, clearRy: .31, faceCrop: .88 } },
-  { id: 'defense', name: 'LOCKDOWN D', src: [70, 680, 260, 300], head: [108, 31, 56, 76], fit: { scale: 1, maxScale: 1.03, y: .13, clearCy: .31, clearRx: .47, clearRy: .36 } },
-  { id: 'crowd', name: 'CROWD ROAR', src: [440, 635, 255, 350], head: [78, 44, 56, 68], fit: { scale: 1.02, maxScale: 1.05, y: .11, clearCy: .35, clearRx: .48, clearRy: .38 } },
-  { id: 'point', name: 'CALL YOUR SHOT', src: [805, 640, 245, 345], head: [64, 31, 57, 67], fit: { scale: 1.02, maxScale: 1.05, x: -.01, y: .11, clearCy: .35, clearRx: .48, clearRy: .38 } },
-  { id: 'flex', name: 'FLEX MODE', src: [1175, 640, 225, 345], head: [80, 30, 57, 66], fit: { scale: 1.03, maxScale: 1.06, y: .11, clearCy: .35, clearRx: .48, clearRy: .38 } },
+  { id: 'dribble-left', name: 'LEFT DRIBBLE', src: [455, 35, 260, 280], head: [128, 9, 40, 58], fit: { scale: 1, maxScale: 1.02, x: .01, y: .05, clearCy: .36, clearRx: .58, clearRy: .46 } },
+  { id: 'dribble-right', name: 'RIGHT DRIBBLE', src: [830, 40, 255, 280], head: [106, 10, 40, 66], fit: { scale: 1, maxScale: 1.02, x: -.01, y: .04, clearCy: .35, clearRx: .56, clearRy: .43 } },
+  { id: 'crossover', name: 'LOW CROSSOVER', src: [1150, 55, 310, 275], head: [157, 13, 41, 66], fit: { scale: 1, maxScale: 1.02, y: .04, clearCy: .35, clearRx: .56, clearRy: .43 } },
+  { id: 'jump-shot', name: 'JUMP SHOT', src: [115, 316, 190, 330], head: [80, 58, 39, 55], fit: { scale: .98, maxScale: 1, y: .04, clearX: .1, clearY: .06, clearCy: .36, clearRx: .62, clearRy: .48, faceCrop: .88 } },
+  { id: 'one-hand-dunk', name: 'ONE-HAND DUNK', src: [445, 305, 285, 355], head: [101, 62, 40, 58], fit: { scale: .98, maxScale: 1, x: .01, y: .04, clearX: .1, clearY: .06, clearCy: .36, clearRx: .62, clearRy: .48, faceCrop: .88 } },
+  { id: 'two-hand-dunk', name: 'TWO-HAND DUNK', src: [830, 310, 220, 340], head: [80, 72, 38, 60], fit: { scale: .98, maxScale: 1, y: .04, clearX: .1, clearY: .06, clearCy: .36, clearRx: .62, clearRy: .48, faceCrop: .88 } },
+  { id: 'defense', name: 'LOCKDOWN D', src: [70, 680, 260, 300], head: [116, 32, 42, 68], fit: { scale: 1, maxScale: 1.02, y: .04, clearCy: .34, clearRx: .56, clearRy: .43 } },
+  { id: 'crowd', name: 'CROWD ROAR', src: [440, 635, 255, 350], head: [87, 45, 42, 58], fit: { scale: 1, maxScale: 1.02, y: .04, clearCy: .37, clearRx: .56, clearRy: .43 } },
+  { id: 'point', name: 'CALL YOUR SHOT', src: [805, 640, 245, 345], head: [73, 29, 42, 58], fit: { scale: 1, maxScale: 1.02, x: -.01, y: .04, clearCy: .37, clearRx: .56, clearRy: .43 } },
+  { id: 'flex', name: 'FLEX MODE', src: [1175, 640, 225, 345], head: [88, 28, 42, 58], fit: { scale: 1, maxScale: 1.02, y: .04, clearCy: .37, clearRx: .56, clearRy: .43 } },
 ];
 
 let bodyPixModelPromise;
