@@ -272,7 +272,7 @@ footer small { grid-column: 1 / -1; border-top: 1px solid #33354e; padding-top: 
 .pose-picker > div:first-child { display: grid; gap: 7px; }
 .pose-picker span { color: var(--cyan); font: 5px var(--pixel); }
 .pose-picker b { font: italic 900 19px/1 var(--display); }
-.pose-options { display: grid; grid-template-columns: repeat(6,1fr); gap: 6px; }
+.pose-options { display: grid; grid-template-columns: repeat(auto-fit,minmax(32px,1fr)); gap: 6px; }
 .pose-options button { min-height: 32px; border: 2px solid #7779a3; background: #090b22; color: white; font: 5px var(--pixel); }
 .pose-options button:hover { border-color: var(--yellow); color: var(--yellow); }
 .pose-options button.active { border-color: var(--ink); background: var(--yellow); color: var(--ink); box-shadow: 3px 3px 0 var(--pink); }

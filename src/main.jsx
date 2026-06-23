@@ -111,18 +111,17 @@ function preparePhoto(file) {
 }
 
 const POSES = [
-  { id: 'ready', name: 'READY STANCE', src: [90, 20, 235, 292], head: [90, 5, 47, 59], fit: { scale: 1.1, maxScale: 1.1, y: .08, clearCy: .38, clearRx: .55, clearRy: .46, neckBottom: 1.05 } },
-  { id: 'dribble-left', name: 'LEFT DRIBBLE', src: [455, 35, 260, 280], head: [126, 9, 44, 74], fit: { scale: 1.03, maxScale: 1.05, x: .01, y: .14, clearCy: .33, clearRx: .48, clearRy: .39, neckBottom: 1.02 } },
-  { id: 'dribble-right', name: 'RIGHT DRIBBLE', src: [830, 40, 255, 280], head: [104, 9, 44, 73], fit: { scale: 1.04, maxScale: 1.06, x: -.01, y: .13, clearCy: .33, clearRx: .49, clearRy: .4, neckBottom: 1.02 } },
-  { id: 'crossover', name: 'LOW CROSSOVER', src: [1150, 55, 310, 275], head: [155, 12, 45, 73], fit: { scale: 1.01, maxScale: 1.04, y: .14, clearCy: .33, clearRx: .47, clearRy: .39, neckBottom: 1.02 } },
-  { id: 'jump-shot', name: 'JUMP SHOT', src: [115, 316, 190, 330], head: [70, 52, 55, 70], fit: { scale: .9, maxScale: .94, y: .18, clearX: .08, clearY: .08, clearCy: .43, clearRx: .38, clearRy: .31, faceCrop: .86, neckBottom: .97 } },
-  { id: 'one-hand-dunk', name: 'ONE-HAND DUNK', src: [445, 305, 285, 355], head: [93, 59, 54, 70], fit: { scale: .9, maxScale: .94, x: -.01, y: .16, clearX: .08, clearY: .08, clearCy: .42, clearRx: .38, clearRy: .32, faceCrop: .86, neckBottom: .98 } },
-  { id: 'two-hand-dunk', name: 'TWO-HAND DUNK', src: [830, 310, 220, 340], head: [72, 69, 52, 71], fit: { scale: .88, maxScale: .93, y: .17, clearX: .08, clearY: .08, clearCy: .42, clearRx: .37, clearRy: .32, faceCrop: .86, neckBottom: .98 } },
-  { id: 'layup', name: 'RUNNING LAYUP', src: [1155, 310, 310, 355], head: [105, 58, 56, 69], fit: { scale: .96, maxScale: 1, x: .01, y: .14, clearCy: .38, clearRx: .45, clearRy: .38, neckBottom: 1.01 } },
-  { id: 'defense', name: 'LOCKDOWN D', src: [70, 680, 260, 300], head: [108, 31, 56, 76], fit: { scale: 1, maxScale: 1.03, y: .14, clearCy: .32, clearRx: .47, clearRy: .38, neckBottom: 1.02 } },
-  { id: 'crowd', name: 'CROWD ROAR', src: [440, 635, 255, 350], head: [78, 44, 56, 68], fit: { scale: 1.02, maxScale: 1.05, y: .12, clearCy: .36, clearRx: .48, clearRy: .4, neckBottom: 1.03 } },
-  { id: 'point', name: 'CALL YOUR SHOT', src: [805, 640, 245, 345], head: [64, 31, 57, 67], fit: { scale: 1.02, maxScale: 1.05, x: -.01, y: .12, clearCy: .36, clearRx: .48, clearRy: .4, neckBottom: 1.03 } },
-  { id: 'flex', name: 'FLEX MODE', src: [1175, 640, 225, 345], head: [80, 30, 57, 66], fit: { scale: 1.03, maxScale: 1.06, y: .12, clearCy: .36, clearRx: .48, clearRy: .4, neckBottom: 1.03 } },
+  { id: 'ready', name: 'READY STANCE', src: [90, 20, 235, 292], head: [90, 5, 47, 59], fit: { scale: 1.1, maxScale: 1.1, y: .1, clearCy: .38, clearRx: .55, clearRy: .46, neckBottom: 1.04, collarY: .88 } },
+  { id: 'dribble-left', name: 'LEFT DRIBBLE', src: [455, 35, 260, 280], head: [126, 9, 44, 74], fit: { scale: 1.03, maxScale: 1.05, x: .01, y: .16, clearCy: .33, clearRx: .48, clearRy: .39, neckBottom: 1, collarY: .86 } },
+  { id: 'dribble-right', name: 'RIGHT DRIBBLE', src: [830, 40, 255, 280], head: [104, 9, 44, 73], fit: { scale: 1.04, maxScale: 1.06, x: -.01, y: .15, clearCy: .33, clearRx: .49, clearRy: .4, neckBottom: 1, collarY: .86 } },
+  { id: 'crossover', name: 'LOW CROSSOVER', src: [1150, 55, 310, 275], head: [155, 12, 45, 73], fit: { scale: 1.01, maxScale: 1.04, y: .16, clearCy: .33, clearRx: .47, clearRy: .39, neckBottom: 1, collarY: .86 } },
+  { id: 'jump-shot', name: 'JUMP SHOT', src: [115, 316, 190, 330], head: [70, 52, 55, 70], fit: { scale: .9, maxScale: .94, y: .2, clearX: .08, clearY: .08, clearCy: .43, clearRx: .38, clearRy: .31, faceCrop: .86, neckBottom: .96, collarY: .85, collarWidth: .68 } },
+  { id: 'one-hand-dunk', name: 'ONE-HAND DUNK', src: [445, 305, 285, 355], head: [93, 59, 54, 70], fit: { scale: .9, maxScale: .94, x: -.01, y: .18, clearX: .08, clearY: .08, clearCy: .42, clearRx: .38, clearRy: .32, faceCrop: .86, neckBottom: .96, collarY: .85, collarWidth: .68 } },
+  { id: 'two-hand-dunk', name: 'TWO-HAND DUNK', src: [830, 310, 220, 340], head: [72, 69, 52, 71], fit: { scale: .88, maxScale: .93, y: .19, clearX: .08, clearY: .08, clearCy: .42, clearRx: .37, clearRy: .32, faceCrop: .86, neckBottom: .96, collarY: .85, collarWidth: .68 } },
+  { id: 'defense', name: 'LOCKDOWN D', src: [70, 680, 260, 300], head: [108, 31, 56, 76], fit: { scale: 1, maxScale: 1.03, y: .16, clearCy: .32, clearRx: .47, clearRy: .38, neckBottom: 1, collarY: .86 } },
+  { id: 'crowd', name: 'CROWD ROAR', src: [440, 635, 255, 350], head: [78, 44, 56, 68], fit: { scale: 1.02, maxScale: 1.05, y: .14, clearCy: .36, clearRx: .48, clearRy: .4, neckBottom: 1.01, collarY: .87 } },
+  { id: 'point', name: 'CALL YOUR SHOT', src: [805, 640, 245, 345], head: [64, 31, 57, 67], fit: { scale: 1.02, maxScale: 1.05, x: -.01, y: .14, clearCy: .36, clearRx: .48, clearRy: .4, neckBottom: 1.01, collarY: .87 } },
+  { id: 'flex', name: 'FLEX MODE', src: [1175, 640, 225, 345], head: [80, 30, 57, 66], fit: { scale: 1.03, maxScale: 1.06, y: .14, clearCy: .36, clearRx: .48, clearRy: .4, neckBottom: 1.01, collarY: .87 } },
 ];
 
 let bodyPixModelPromise;
@@ -518,6 +517,9 @@ async function renderPoseAvatar(identity, poseIndex, onStage = () => {}) {
     neckTopRight: .63,
     neckBottomLeft: .18,
     neckBottomRight: .82,
+    collarY: .88,
+    collarWidth: .76,
+    collarDepth: .13,
     ...pose.fit,
   };
   const faceAspect = 44 / 62;
@@ -557,6 +559,46 @@ async function renderPoseAvatar(identity, poseIndex, onStage = () => {}) {
     [headX + headWidth * fit.neckTopRight, headY + headHeight * fit.neckTop],
   ]);
   context.restore();
+  const collarCenter = headX + headWidth / 2;
+  const collarTop = headY + headHeight * fit.collarY;
+  const collarHalf = headWidth * fit.collarWidth / 2;
+  const collarDepth = headHeight * fit.collarDepth;
+  fillPolygon(context, '#02061a', [
+    [collarCenter - collarHalf * .46, collarTop - 1],
+    [collarCenter + collarHalf * .46, collarTop - 1],
+    [collarCenter + collarHalf * .86, collarTop + collarDepth],
+    [collarCenter - collarHalf * .86, collarTop + collarDepth],
+  ]);
+  fillPolygon(context, '#071a4f', [
+    [collarCenter - collarHalf * .38, collarTop + 1],
+    [collarCenter + collarHalf * .38, collarTop + 1],
+    [collarCenter + collarHalf * .72, collarTop + collarDepth * .74],
+    [collarCenter - collarHalf * .72, collarTop + collarDepth * .74],
+  ]);
+  fillPolygon(context, '#ff2ca8', [
+    [collarCenter - collarHalf * .55, collarTop - 2],
+    [collarCenter - collarHalf * .4, collarTop + 1],
+    [collarCenter - collarHalf * .31, collarTop + collarDepth * .5],
+    [collarCenter - collarHalf * .43, collarTop + collarDepth * .62],
+    [collarCenter - collarHalf * .62, collarTop + 1],
+  ]);
+  fillPolygon(context, '#ff2ca8', [
+    [collarCenter + collarHalf * .55, collarTop - 2],
+    [collarCenter + collarHalf * .4, collarTop + 1],
+    [collarCenter + collarHalf * .31, collarTop + collarDepth * .5],
+    [collarCenter + collarHalf * .43, collarTop + collarDepth * .62],
+    [collarCenter + collarHalf * .62, collarTop + 1],
+  ]);
+  fillPolygon(context, '#ffd7ee', [
+    [collarCenter - collarHalf * .5, collarTop - 2],
+    [collarCenter - collarHalf * .42, collarTop],
+    [collarCenter - collarHalf * .48, collarTop + 1],
+  ]);
+  fillPolygon(context, '#ffd7ee', [
+    [collarCenter + collarHalf * .5, collarTop - 2],
+    [collarCenter + collarHalf * .42, collarTop],
+    [collarCenter + collarHalf * .48, collarTop + 1],
+  ]);
   const bounds = alphaBounds(cell);
   const output = document.createElement('canvas');
   output.width = 576; output.height = 720;
@@ -700,7 +742,7 @@ function Registration({ onClose, onCreate }) {
           </div>
         </> : <>
           <h2>PIXEL MODE:<br/><em>ACTIVATED</em></h2>
-          <p className="form-intro">A clear headshot is enough. The free on-device forge maps the player’s face shape, skin tone, hair, and expression onto the same native pixel grid as the body, then builds a complete arcade player from 12 full-body poses.</p>
+          <p className="form-intro">A clear headshot is enough. The free on-device forge maps the player’s face shape, skin tone, hair, and expression onto the same native pixel grid as the body, then builds a complete arcade player from 11 full-body poses.</p>
           <div className="photo-step">
             <label className={`upload-zone ${forgeStatus && !avatar ? 'forging' : ''}`}>
               {avatar ? <PixelAvatar player={generated} /> : sourcePhoto ? <img className="source-photo" src={sourcePhoto} alt="Uploaded player awaiting arcade conversion" /> : <><span className="upload-icon">＋</span><b>DROP YOUR PLAYER PHOTO</b><small>JPG, PNG, or WEBP · 10 MB max</small></>}
