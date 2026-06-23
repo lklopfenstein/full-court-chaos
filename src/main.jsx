@@ -111,17 +111,17 @@ function preparePhoto(file) {
 }
 
 const POSES = [
-  { id: 'ready', name: 'READY STANCE', src: [90, 20, 235, 292], head: [90, 5, 47, 59], fit: { scale: 1.1, maxScale: 1.1, y: .1, clearCy: .38, clearRx: .55, clearRy: .46, neckBottom: 1.04, collarY: .88 } },
-  { id: 'dribble-left', name: 'LEFT DRIBBLE', src: [455, 35, 260, 280], head: [126, 9, 44, 74], fit: { scale: 1.03, maxScale: 1.05, x: .01, y: .16, clearCy: .33, clearRx: .48, clearRy: .39, neckBottom: 1, collarY: .86 } },
-  { id: 'dribble-right', name: 'RIGHT DRIBBLE', src: [830, 40, 255, 280], head: [104, 9, 44, 73], fit: { scale: 1.04, maxScale: 1.06, x: -.01, y: .15, clearCy: .33, clearRx: .49, clearRy: .4, neckBottom: 1, collarY: .86 } },
-  { id: 'crossover', name: 'LOW CROSSOVER', src: [1150, 55, 310, 275], head: [155, 12, 45, 73], fit: { scale: 1.01, maxScale: 1.04, y: .16, clearCy: .33, clearRx: .47, clearRy: .39, neckBottom: 1, collarY: .86 } },
-  { id: 'jump-shot', name: 'JUMP SHOT', src: [115, 316, 190, 330], head: [70, 52, 55, 70], fit: { scale: .9, maxScale: .94, y: .2, clearX: .08, clearY: .08, clearCy: .43, clearRx: .38, clearRy: .31, faceCrop: .86, neckBottom: .96, collarY: .85, collarWidth: .68 } },
-  { id: 'one-hand-dunk', name: 'ONE-HAND DUNK', src: [445, 305, 285, 355], head: [93, 59, 54, 70], fit: { scale: .9, maxScale: .94, x: -.01, y: .18, clearX: .08, clearY: .08, clearCy: .42, clearRx: .38, clearRy: .32, faceCrop: .86, neckBottom: .96, collarY: .85, collarWidth: .68 } },
-  { id: 'two-hand-dunk', name: 'TWO-HAND DUNK', src: [830, 310, 220, 340], head: [72, 69, 52, 71], fit: { scale: .88, maxScale: .93, y: .19, clearX: .08, clearY: .08, clearCy: .42, clearRx: .37, clearRy: .32, faceCrop: .86, neckBottom: .96, collarY: .85, collarWidth: .68 } },
-  { id: 'defense', name: 'LOCKDOWN D', src: [70, 680, 260, 300], head: [108, 31, 56, 76], fit: { scale: 1, maxScale: 1.03, y: .16, clearCy: .32, clearRx: .47, clearRy: .38, neckBottom: 1, collarY: .86 } },
-  { id: 'crowd', name: 'CROWD ROAR', src: [440, 635, 255, 350], head: [78, 44, 56, 68], fit: { scale: 1.02, maxScale: 1.05, y: .14, clearCy: .36, clearRx: .48, clearRy: .4, neckBottom: 1.01, collarY: .87 } },
-  { id: 'point', name: 'CALL YOUR SHOT', src: [805, 640, 245, 345], head: [64, 31, 57, 67], fit: { scale: 1.02, maxScale: 1.05, x: -.01, y: .14, clearCy: .36, clearRx: .48, clearRy: .4, neckBottom: 1.01, collarY: .87 } },
-  { id: 'flex', name: 'FLEX MODE', src: [1175, 640, 225, 345], head: [80, 30, 57, 66], fit: { scale: 1.03, maxScale: 1.06, y: .14, clearCy: .36, clearRx: .48, clearRy: .4, neckBottom: 1.01, collarY: .87 } },
+  { id: 'ready', name: 'READY STANCE', src: [90, 20, 235, 292], head: [90, 5, 47, 59], fit: { scale: 1.1, maxScale: 1.1, y: .08, clearCy: .38, clearRx: .55, clearRy: .42 } },
+  { id: 'dribble-left', name: 'LEFT DRIBBLE', src: [455, 35, 260, 280], head: [126, 9, 44, 74], fit: { scale: 1.03, maxScale: 1.05, x: .01, y: .13, clearCy: .32, clearRx: .48, clearRy: .36 } },
+  { id: 'dribble-right', name: 'RIGHT DRIBBLE', src: [830, 40, 255, 280], head: [104, 9, 44, 73], fit: { scale: 1.04, maxScale: 1.06, x: -.01, y: .12, clearCy: .32, clearRx: .49, clearRy: .37 } },
+  { id: 'crossover', name: 'LOW CROSSOVER', src: [1150, 55, 310, 275], head: [155, 12, 45, 73], fit: { scale: 1.01, maxScale: 1.04, y: .13, clearCy: .32, clearRx: .47, clearRy: .36 } },
+  { id: 'jump-shot', name: 'JUMP SHOT', src: [115, 316, 190, 330], head: [70, 52, 55, 70], fit: { scale: .9, maxScale: .94, y: .17, clearX: .08, clearY: .08, clearCy: .42, clearRx: .38, clearRy: .3, faceCrop: .88 } },
+  { id: 'one-hand-dunk', name: 'ONE-HAND DUNK', src: [445, 305, 285, 355], head: [93, 59, 54, 70], fit: { scale: .9, maxScale: .94, x: -.02, y: .15, clearX: .08, clearY: .08, clearCy: .41, clearRx: .38, clearRy: .31, faceCrop: .88 } },
+  { id: 'two-hand-dunk', name: 'TWO-HAND DUNK', src: [830, 310, 220, 340], head: [72, 69, 52, 71], fit: { scale: .88, maxScale: .93, y: .16, clearX: .08, clearY: .08, clearCy: .41, clearRx: .37, clearRy: .31, faceCrop: .88 } },
+  { id: 'defense', name: 'LOCKDOWN D', src: [70, 680, 260, 300], head: [108, 31, 56, 76], fit: { scale: 1, maxScale: 1.03, y: .13, clearCy: .31, clearRx: .47, clearRy: .36 } },
+  { id: 'crowd', name: 'CROWD ROAR', src: [440, 635, 255, 350], head: [78, 44, 56, 68], fit: { scale: 1.02, maxScale: 1.05, y: .11, clearCy: .35, clearRx: .48, clearRy: .38 } },
+  { id: 'point', name: 'CALL YOUR SHOT', src: [805, 640, 245, 345], head: [64, 31, 57, 67], fit: { scale: 1.02, maxScale: 1.05, x: -.01, y: .11, clearCy: .35, clearRx: .48, clearRy: .38 } },
+  { id: 'flex', name: 'FLEX MODE', src: [1175, 640, 225, 345], head: [80, 30, 57, 66], fit: { scale: 1.03, maxScale: 1.06, y: .11, clearCy: .35, clearRx: .48, clearRy: .38 } },
 ];
 
 let bodyPixModelPromise;
@@ -298,11 +298,11 @@ function makePixelFaceSprite(landmarkFace, image, skin, hair, bodyFace) {
   // hand-drawn arcade portrait than a shrunken photo: the uploaded image sets
   // palette and broad feature placement, but the final pixels use the same
   // chunky body-art language as the pose atlas.
-  fillPolygon(context, outline, [[14,43],[30,43],[37,62],[7,62]]);
-  fillPolygon(context, skinShadow, [[15,43],[30,43],[35,62],[9,62]]);
-  fillPolygon(context, skinBase, [[16,43],[28,43],[33,62],[11,62]]);
-  context.fillStyle = skinLight; context.fillRect(18, 46, 4, 13);
-  context.fillStyle = skinDeep; context.fillRect(29, 48, 2, 12);
+  fillPolygon(context, outline, [[16,43],[28,43],[32,54],[12,54]]);
+  fillPolygon(context, skinShadow, [[17,43],[28,43],[30,54],[14,54]]);
+  fillPolygon(context, skinBase, [[18,43],[27,43],[29,54],[15,54]]);
+  context.fillStyle = skinLight; context.fillRect(19, 46, 3, 7);
+  context.fillStyle = skinDeep; context.fillRect(28, 47, 2, 7);
 
   fillPolygon(context, outline, [[13,5],[31,5],[37,10],[40,24],[39,36],[35,49],[28,56],[16,56],[9,49],[5,36],[4,24],[7,10]]);
   context.fillStyle = outline; context.fillRect(3, 24, 5, 11); context.fillRect(36, 24, 5, 11);
@@ -511,15 +511,6 @@ async function renderPoseAvatar(identity, poseIndex, onStage = () => {}) {
     clearRx: .68,
     clearRy: .57,
     faceCrop: .9,
-    neckTop: .72,
-    neckBottom: 1.03,
-    neckTopLeft: .37,
-    neckTopRight: .63,
-    neckBottomLeft: .18,
-    neckBottomRight: .82,
-    collarY: .88,
-    collarWidth: .76,
-    collarDepth: .13,
     ...pose.fit,
   };
   const faceAspect = 44 / 62;
@@ -543,62 +534,6 @@ async function renderPoseAvatar(identity, poseIndex, onStage = () => {}) {
   const faceSourceHeight = Math.round(62 * fit.faceCrop);
   const faceDrawHeight = headHeight * fit.faceCrop;
   context.drawImage(face, 0, 0, 44, faceSourceHeight, headX, headY, headWidth, faceDrawHeight);
-  context.save();
-  context.globalCompositeOperation = 'destination-over';
-  const neckSkin = mixColor(identity.skin, [210, 139, 92], .08);
-  fillPolygon(context, colorCss(neckSkin), [
-    [headX + headWidth * fit.neckTopLeft, headY + headHeight * fit.neckTop],
-    [headX + headWidth * fit.neckTopRight, headY + headHeight * fit.neckTop],
-    [headX + headWidth * fit.neckBottomRight, headY + headHeight * fit.neckBottom],
-    [headX + headWidth * fit.neckBottomLeft, headY + headHeight * fit.neckBottom],
-  ]);
-  fillPolygon(context, colorCss(shadeColor(neckSkin, .76)), [
-    [headX + headWidth * (fit.neckTopRight - .04), headY + headHeight * (fit.neckTop + .02)],
-    [headX + headWidth * (fit.neckBottomRight - .09), headY + headHeight * (fit.neckBottom - .02)],
-    [headX + headWidth * fit.neckBottomRight, headY + headHeight * fit.neckBottom],
-    [headX + headWidth * fit.neckTopRight, headY + headHeight * fit.neckTop],
-  ]);
-  context.restore();
-  const collarCenter = headX + headWidth / 2;
-  const collarTop = headY + headHeight * fit.collarY;
-  const collarHalf = headWidth * fit.collarWidth / 2;
-  const collarDepth = headHeight * fit.collarDepth;
-  fillPolygon(context, '#02061a', [
-    [collarCenter - collarHalf * .46, collarTop - 1],
-    [collarCenter + collarHalf * .46, collarTop - 1],
-    [collarCenter + collarHalf * .86, collarTop + collarDepth],
-    [collarCenter - collarHalf * .86, collarTop + collarDepth],
-  ]);
-  fillPolygon(context, '#071a4f', [
-    [collarCenter - collarHalf * .38, collarTop + 1],
-    [collarCenter + collarHalf * .38, collarTop + 1],
-    [collarCenter + collarHalf * .72, collarTop + collarDepth * .74],
-    [collarCenter - collarHalf * .72, collarTop + collarDepth * .74],
-  ]);
-  fillPolygon(context, '#ff2ca8', [
-    [collarCenter - collarHalf * .55, collarTop - 2],
-    [collarCenter - collarHalf * .4, collarTop + 1],
-    [collarCenter - collarHalf * .31, collarTop + collarDepth * .5],
-    [collarCenter - collarHalf * .43, collarTop + collarDepth * .62],
-    [collarCenter - collarHalf * .62, collarTop + 1],
-  ]);
-  fillPolygon(context, '#ff2ca8', [
-    [collarCenter + collarHalf * .55, collarTop - 2],
-    [collarCenter + collarHalf * .4, collarTop + 1],
-    [collarCenter + collarHalf * .31, collarTop + collarDepth * .5],
-    [collarCenter + collarHalf * .43, collarTop + collarDepth * .62],
-    [collarCenter + collarHalf * .62, collarTop + 1],
-  ]);
-  fillPolygon(context, '#ffd7ee', [
-    [collarCenter - collarHalf * .5, collarTop - 2],
-    [collarCenter - collarHalf * .42, collarTop],
-    [collarCenter - collarHalf * .48, collarTop + 1],
-  ]);
-  fillPolygon(context, '#ffd7ee', [
-    [collarCenter + collarHalf * .5, collarTop - 2],
-    [collarCenter + collarHalf * .42, collarTop],
-    [collarCenter + collarHalf * .48, collarTop + 1],
-  ]);
   const bounds = alphaBounds(cell);
   const output = document.createElement('canvas');
   output.width = 576; output.height = 720;
