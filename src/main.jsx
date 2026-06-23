@@ -270,7 +270,7 @@ function makePixelFaceSprite(landmarkFace, image, skin, hair, bodyFace) {
   const mouthWidth = clamp(Math.round(Math.abs(mapX(mouthRight) - mapX(mouthLeft))), 3, 5);
   const hairDepth = clamp(Math.round(4 + ((forehead.y - bodyFace.minY) / Math.max(1, bodyFace.height)) * 5), 4, 8);
   const sprite = document.createElement('canvas');
-  sprite.width = 20; sprite.height = 26;
+  sprite.width = 20; sprite.height = 30;
   const context = sprite.getContext('2d');
   const outline = '#07091d';
   const skinDeep = colorCss(shadeColor(skin, .5));
@@ -282,8 +282,15 @@ function makePixelFaceSprite(landmarkFace, image, skin, hair, bodyFace) {
   const hairBase = colorCss(hair);
   const hairLight = colorCss(shadeColor(hair, 1.35));
 
-  fillPolygon(context, outline, [[6,0],[14,0],[17,2],[19,8],[18,18],[15,23],[12,26],[8,26],[5,23],[2,18],[1,8],[3,2]]);
-  fillPolygon(context, skinBase, [[6,1],[14,1],[17,3],[18,8],[17,17],[15,22],[12,25],[8,25],[5,22],[3,17],[2,8],[4,3]]);
+  // Build the neck into the same low-resolution sprite as the head. It sits
+  // behind the jaw and flares into the jersey opening, so every pose receives
+  // one continuous head-and-neck asset instead of two independently placed
+  // shapes that can separate at different aspect ratios.
+  fillPolygon(context, skinBase, [[7,20],[13,20],[14,30],[6,30]]);
+  fillPolygon(context, skinShadow, [[12,20],[13,20],[14,30],[12,30]]);
+
+  fillPolygon(context, outline, [[6,0],[14,0],[17,2],[19,8],[18,18],[15,22],[12,24],[8,24],[5,22],[2,18],[1,8],[3,2]]);
+  fillPolygon(context, skinBase, [[6,1],[14,1],[17,3],[18,8],[17,17],[15,21],[12,23],[8,23],[5,21],[3,17],[2,8],[4,3]]);
   context.fillStyle = outline; context.fillRect(0, 10, 3, 6); context.fillRect(17, 10, 3, 6);
   context.fillStyle = skinBase; context.fillRect(1, 11, 2, 4); context.fillRect(17, 11, 2, 4);
 
@@ -330,7 +337,7 @@ function makePixelFaceSprite(landmarkFace, image, skin, hair, bodyFace) {
   context.fillRect(7, eyeY + 4, 1, 1); context.fillRect(13, eyeY + 4, 1, 1);
 
   const canvas = document.createElement('canvas');
-  canvas.width = 40; canvas.height = 52;
+  canvas.width = 40; canvas.height = 60;
   const output = canvas.getContext('2d');
   output.imageSmoothingEnabled = false;
   output.drawImage(sprite, 0, 0, canvas.width, canvas.height);
@@ -437,31 +444,34 @@ async function renderPoseAvatar(identity, poseIndex, onStage = () => {}) {
   recolorPose(cell, identity.skin);
   context.imageSmoothingEnabled = false;
   const [slotX, slotY, slotWidth, slotHeight] = pose.head;
-  // The sprite artwork is deliberately widened when it enters the pose atlas.
-  // A literal 20:26 canvas ratio reads too tall and narrow beside the atlas's
-  // broad shoulders, especially on mobile where the whole player is enlarged.
-  const faceAspect = .84;
-  const headWidth = Math.min(slotWidth, slotHeight * faceAspect) * .86;
-  const headHeight = headWidth / faceAspect;
+  const faceAspect = 40 / 60;
+  let headWidth = slotWidth * .9;
+  let headHeight = headWidth / faceAspect;
+  if (headHeight > slotHeight * .98) {
+    headHeight = slotHeight * .98;
+    headWidth = headHeight * faceAspect;
+  }
   const headX = slotX + (slotWidth - headWidth) / 2;
-  const headY = slotY + (slotHeight - headHeight) * .76;
+  const headY = slotY + slotHeight - headHeight;
   context.save();
   context.beginPath();
   context.ellipse(slotX + slotWidth / 2, slotY + slotHeight / 2, slotWidth * .54, slotHeight * .53, 0, 0, Math.PI * 2);
   context.clip();
   context.clearRect(slotX - 4, slotY - 4, slotWidth + 8, slotHeight + 8);
   context.restore();
+  context.drawImage(face, headX, headY, headWidth, headHeight);
+  context.save();
   context.fillStyle = `rgb(${identity.skin.join(',')})`;
   context.beginPath();
-  context.ellipse(
-    slotX + slotWidth / 2,
-    slotY + slotHeight * .72,
-    slotWidth * .26,
-    slotHeight * .25,
-    0, 0, Math.PI * 2,
-  );
+  context.moveTo(headX + headWidth * .41, headY + headHeight * .68);
+  context.lineTo(headX + headWidth * .59, headY + headHeight * .68);
+  context.lineTo(slotX + slotWidth * .62, slotY + slotHeight * .97);
+  context.lineTo(slotX + slotWidth * .38, slotY + slotHeight * .97);
+  context.closePath();
   context.fill();
-  context.drawImage(face, headX, headY, headWidth, headHeight);
+  context.fillStyle = `rgb(${shadeColor(identity.skin, .72).map(value => Math.round(clamp(value, 0, 255))).join(',')})`;
+  context.fillRect(Math.round(headX + headWidth * .58), Math.round(headY + headHeight * .71), Math.max(1, Math.round(headWidth * .06)), Math.max(2, Math.round(headHeight * .2)));
+  context.restore();
   const bounds = alphaBounds(cell);
   const output = document.createElement('canvas');
   output.width = 576; output.height = 720;
